@@ -10,6 +10,7 @@ rule token =
           white                   { token lexbuf }
         | "+"                     { UNION }
         | "*"                     { STAR }
+        | "\\."                   { IDENT "." }
         | "."                     { CONCAT }
         | "("                     { LPAR }
         | ")"                     { RPAR }

@@ -147,6 +147,11 @@ let get_accepted m =
 ;;
 
 let product_construction op m1 m2 =
+  let log fmt =
+    if false then
+    Format.kasprintf (print_endline) fmt
+  else
+    Format.ikfprintf (fun _  -> ()) Format.std_formatter fmt in
   let cross_product a b =
     List.concat
       (List.rev_map (fun e1 -> List.rev_map (fun e2 -> ProductState (e1, e2)) b) a)
@@ -159,8 +164,9 @@ let product_construction op m1 m2 =
         | ProductState (l, r) ->
           List.fold_left
             (fun acc' a ->
-              let lRes = succ m1 l a
-              and rRes = succ m2 r a in
+              match (Adt.get_next_states m1 l a, Adt.get_next_states m2 r a) with
+              | [],_ | _,[] ->  acc'
+              | lRes::_, rRes :: _ ->
               (ProductState (l, r), a, ProductState (lRes, rRes)) :: acc')
             acc
             alphabet
@@ -169,9 +175,14 @@ let product_construction op m1 m2 =
       cartStates
   in
   let cartesianStates = cross_product (get_states m1) (get_states m2) in
+  log "There are %d cartesian states" (List.length cartesianStates);
   let unionAlphabet = Utils.list_union (get_alphabet m1) (get_alphabet m2) in
-  let cartTrans = find_product_trans m1 m2 cartesianStates unionAlphabet
-  and cartAccepting =
+  log "Alphabet: @[%a@]" Format.(pp_print_list ~pp_sep:pp_print_space pp_print_string) unionAlphabet;
+  log "Transitions 1 : %d" (List.length @@ get_transitions m1);
+  log "Transitions 2 : %d" (List.length @@ get_transitions m2);
+  let cartTrans = find_product_trans m1 m2 cartesianStates unionAlphabet in
+  log "%s %d" __FILE__ __LINE__;
+  let cartAccepting =
     List.filter
       (function
        | ProductState (l, r) ->
