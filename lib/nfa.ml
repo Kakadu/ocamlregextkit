@@ -145,9 +145,9 @@ let is_accepted n s =
   for i = 0 to String.length s - 1 do
     let c = String.make 1 s.[i] in
     sts
-      := eps_reachable_set
-           n
-           (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
+    := eps_reachable_set
+         n
+         (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
   done;
   List.exists (is_accepting n) !sts
 ;;
@@ -289,4 +289,50 @@ let re_to_nfa re =
     transitions
     start
     accepting
+;;
+
+(*
+   let log fmt =
+   if true
+   then Stdlib.Format.kasprintf (Stdlib.Format.eprintf "%s\n%!") fmt
+   else Stdlib.Format.ifprintf Stdlib.Format.std_formatter fmt
+   ;; *)
+
+let intersect left right =
+  (* TODO: merge alphabets *)
+  let unionAlphabet = Utils.list_union (get_alphabet left) (get_alphabet right) in
+  let last_state = ref 0 in
+  let new_states : (state * state, state) Hashtbl.t = Hashtbl.create 42 in
+  let cartAccepting = ref [] in
+  let cartTrans = ref [] in
+  let () =
+    Adt.iter_states
+      (fun s1 ->
+        Adt.iter_states
+          (fun s2 ->
+            incr last_state;
+            Hashtbl.add new_states (s1, s2) !last_state;
+            (* log "Add state (%d,%d) -> %d" s1 s2 !last_state; *)
+            if Adt.is_accepting left s1 || Adt.is_accepting right s2
+            then cartAccepting := !last_state :: !cartAccepting)
+          right)
+      left
+  in
+  left
+  |> Adt.iter_transitions (fun (slf, cl, slt) ->
+    right
+    |> Adt.iter_transitions (fun (srf, cr, srt) ->
+      if cl = cr
+      then (
+        match Hashtbl.find new_states (slf, srf), Hashtbl.find new_states (slt, srt) with
+        | exception Not_found ->
+          (* It could be after minimization *)
+          ()
+        | new_from, new_to -> cartTrans := (new_from, cl, new_to) :: !cartTrans)));
+  Adt.create_automata
+    (Hashtbl.to_seq_values new_states |> List.of_seq)
+    unionAlphabet
+    !cartTrans
+    (Hashtbl.find new_states (Adt.get_start left, Adt.get_start right))
+    !cartAccepting
 ;;

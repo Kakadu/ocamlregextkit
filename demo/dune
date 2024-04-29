@@ -1,3 +1,9 @@
 (executable
  (name demo)
+ (modules demo)
+ (libraries regextkit))
+
+(executable
+ (name demo2)
+ (modules demo2)
  (libraries regextkit))
