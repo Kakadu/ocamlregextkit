@@ -2,3 +2,13 @@
  (name test)
  (modules test)
  (libraries regextkit))
+
+(library
+ (name manytests)
+ (modules manytests)
+ (libraries regextkit)
+ (flags
+  (:standard -warn-error -26))
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

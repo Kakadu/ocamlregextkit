@@ -313,7 +313,7 @@ let intersect left right =
             incr last_state;
             Hashtbl.add new_states (s1, s2) !last_state;
             (* log "Add state (%d,%d) -> %d" s1 s2 !last_state; *)
-            if Adt.is_accepting left s1 || Adt.is_accepting right s2
+            if Adt.is_accepting left s1 && Adt.is_accepting right s2
             then cartAccepting := !last_state :: !cartAccepting)
           right)
       left
