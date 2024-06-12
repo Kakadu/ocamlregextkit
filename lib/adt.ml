@@ -6,6 +6,22 @@ type 't automata =
   ; accepting : ('t, bool) Hashtbl.t
   }
 
+let map f from =
+  let states = List.map f from.states in
+  let start = f from.start in
+  let transitions = Hashtbl.create (Hashtbl.length from.transitions) in
+  Hashtbl.iter
+    (fun k v ->
+      let newk = f k in
+      let newv = Hashtbl.create (Hashtbl.length v) in
+      Hashtbl.iter (fun k v -> Hashtbl.add newv k (f v)) v;
+      Hashtbl.add transitions newk newv)
+    from.transitions;
+  let accepting = Hashtbl.create (Hashtbl.length from.accepting) in
+  Hashtbl.iter (fun k v -> Hashtbl.add accepting (f k) v) from.accepting;
+  { states; start; transitions; alphabet = from.alphabet; accepting }
+;;
+
 let get_states m = m.states
 let set_states m qs = m.states <- qs
 let iter_states f m = List.iter f m.states
@@ -75,7 +91,7 @@ let get_reachable_states m =
           List.fold_left
             (fun acc2 a -> Utils.list_union acc2 (get_next_states m s a))
             acc
-            ("ε"::m.alphabet))
+            ("ε" :: m.alphabet))
         marked
         marked
     in

@@ -1,5 +1,7 @@
 type 't automata
 
+val map : ('a -> 'b) -> 'a automata -> 'b automata
+
 (** [get_states m]
     @return a list of all states in [m] *)
 val get_states : 't automata -> 't list

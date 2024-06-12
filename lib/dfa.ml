@@ -147,8 +147,9 @@ let get_accepted m =
 ;;
 
 let product_construction op m1 m2 =
-  if (get_alphabet m1 <> get_alphabet m2) 
-  then raise (Invalid_argument "Cannot perform product operation over different alphabets");
+  if get_alphabet m1 <> get_alphabet m2
+  then
+    raise (Invalid_argument "Cannot perform product operation over different alphabets");
   let cross_product a b =
     List.concat
       (List.rev_map (fun e1 -> List.rev_map (fun e2 -> ProductState (e1, e2)) b) a)
@@ -176,14 +177,14 @@ let product_construction op m1 m2 =
   and cartAccepting =
     List.filter
       (function
-       | ProductState (l, r) ->
-         (match op with
-          | Union -> is_accepting m1 l || is_accepting m2 r
-          | Intersection -> is_accepting m1 l && is_accepting m2 r
-          | SymmetricDifference ->
-            (is_accepting m1 l && not (is_accepting m2 r))
-            || ((not (is_accepting m1 l)) && is_accepting m2 r))
-       | _ -> false)
+        | ProductState (l, r) ->
+          (match op with
+           | Union -> is_accepting m1 l || is_accepting m2 r
+           | Intersection -> is_accepting m1 l && is_accepting m2 r
+           | SymmetricDifference ->
+             (is_accepting m1 l && not (is_accepting m2 r))
+             || ((not (is_accepting m1 l)) && is_accepting m2 r))
+        | _ -> false)
       cartesianStates
   in
   Adt.create_automata
@@ -235,7 +236,7 @@ let disjoin_dfas m1 m2 =
       | None -> State []
     in
     missingtran1
-      := List.concat_map (fun a -> Adt.map_states (fun s -> s, a, sink) m1) missingalph1);
+    := List.concat_map (fun a -> Adt.map_states (fun s -> s, a, sink) m1) missingalph1);
   let missingtran2 = ref []
   and hassink2 = ref false in
   if List.length merged_alphabet > List.length (get_alphabet m2)
@@ -254,10 +255,9 @@ let disjoin_dfas m1 m2 =
       | None -> State []
     in
     missingtran2
-      := List.concat_map
-           (fun a ->
-             List.map (fun s -> s, a, sink) (Utils.add_unique sink (get_states m2)))
-           missingalph2);
+    := List.concat_map
+         (fun a -> List.map (fun s -> s, a, sink) (Utils.add_unique sink (get_states m2)))
+         missingalph2);
   let newstate1 = if !hassink1 then get_states m1 else State [] :: get_states m1
   and newtrans1 = get_transitions m1 @ !missingtran1 in
   let newstate2 = if !hassink2 then get_states m2 else State [] :: get_states m2
@@ -283,14 +283,14 @@ let hopcroft_equiv m1 m2 =
     ref (List.rev_map (fun s -> [ s ]) (get_states m1' @ get_states m2'))
   and stack = ref [] in
   merged_states
-    := List.filter_map
-         (fun s ->
-           if List.mem (get_start m2') s
-           then Some (get_start m1' :: s)
-           else if List.mem (get_start m1') s
-           then None
-           else Some s)
-         !merged_states;
+  := List.filter_map
+       (fun s ->
+         if List.mem (get_start m2') s
+         then Some (get_start m1' :: s)
+         else if List.mem (get_start m1') s
+         then None
+         else Some s)
+       !merged_states;
   stack := [ get_start m1', get_start m2' ];
   while List.length !stack > 0 do
     let q1, q2 = List.hd !stack in
@@ -305,10 +305,10 @@ let hopcroft_equiv m1 m2 =
         then (
           stack := (succ1, succ2) :: !stack;
           merged_states
-            := List.filter_map
-                 (fun s ->
-                   if s = r1 then None else if s = r2 then Some (r1 @ s) else Some s)
-                 !merged_states))
+          := List.filter_map
+               (fun s ->
+                 if s = r1 then None else if s = r2 then Some (r1 @ s) else Some s)
+               !merged_states))
       m1'
   done;
   List.for_all
@@ -403,9 +403,9 @@ let brzozowski_min m =
     let newaccepting =
       List.filter_map
         (function
-         | State s ->
-           if List.mem (get_state (get_start d)) s then Some (State s) else None
-         | _ -> None)
+          | State s ->
+            if List.mem (get_state (get_start d)) s then Some (State s) else None
+          | _ -> None)
         !newstates
     in
     Adt.create_automata
@@ -498,8 +498,8 @@ let nfa_to_dfa (n : Nfa.nfa) =
   let newaccepting =
     List.filter
       (function
-       | State s -> List.exists (Nfa.is_accepting n) s
-       | _ -> false)
+        | State s -> List.exists (Nfa.is_accepting n) s
+        | _ -> false)
       !newstates
   in
   Adt.create_automata !newstates (get_alphabet n) !newtrans (State newstart) newaccepting
@@ -579,27 +579,27 @@ let create qs alph tran init fin =
   if List.length newtran < List.length newstates * List.length alph
   then (
     (sink
-       := match
-            List.find_opt
-              (fun s ->
-                (not (List.mem s newfin))
-                && List.for_all (fun (s', _, t') -> s' <> s || t' = s) newtran)
-              newstates
-          with
-          | Some t ->
-            hassink1 := true;
-            t
-          | None -> State [ List.length qs ]);
+     := match
+          List.find_opt
+            (fun s ->
+              (not (List.mem s newfin))
+              && List.for_all (fun (s', _, t') -> s' <> s || t' = s) newtran)
+            newstates
+        with
+        | Some t ->
+          hassink1 := true;
+          t
+        | None -> State [ List.length qs ]);
     missingtran
-      := List.concat_map
-           (fun a ->
-             List.filter_map
-               (fun s ->
-                 if not (List.exists (fun (s', a', _) -> s = s' && a = a') newtran)
-                 then Some (s, a, !sink)
-                 else None)
-               (Utils.add_unique !sink newstates))
-           alph);
+    := List.concat_map
+         (fun a ->
+           List.filter_map
+             (fun s ->
+               if not (List.exists (fun (s', a', _) -> s = s' && a = a') newtran)
+               then Some (s, a, !sink)
+               else None)
+             (Utils.add_unique !sink newstates))
+         alph);
   let newstates =
     if List.length !missingtran > 0 then newstates @ [ !sink ] else newstates
   in
@@ -609,4 +609,18 @@ let create qs alph tran init fin =
     else !missingtran @ newtran
   in
   Adt.create_automata newstates alph newtrans newinit newfin
+;;
+
+let to_nfa self =
+  let last = ref 0 in
+  let store : (state, _) Hashtbl.t = Hashtbl.create 43 in
+  let f st =
+    match Hashtbl.find store st with
+    | x -> x
+    | exception Not_found ->
+      incr last;
+      Hashtbl.add store st !last;
+      !last
+  in
+  Adt.map f self
 ;;

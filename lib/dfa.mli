@@ -79,7 +79,7 @@ val is_accepted : dfa -> string -> bool
 val get_accepted : dfa -> string option
 
 (** [product_insterection m1 m2]
-    @return the intersection of DFAs [m1] [m2], by the product construction 
+    @return the intersection of DFAs [m1] [m2], by the product construction
     @raise Invalid_argument if [m1] and [m2] have different alphabets *)
 val product_intersection : dfa -> dfa -> dfa
 
@@ -137,3 +137,5 @@ val print : dfa -> unit
 (** [export_graphviz m]
     @return a representation of the DFA [m] in the DOT language for Graphviz *)
 val export_graphviz : dfa -> string
+
+val to_nfa : dfa -> Nfa.nfa

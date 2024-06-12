@@ -73,3 +73,40 @@ let%expect_test _ =
   (* BUG *)
   [%expect {| true |}]
 ;;
+
+let%expect_test "NFA of DFA" =
+  let lang1 = "b*" in
+  let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
+  Nfa.prune nfa1;
+  Printf.printf "%b" (Nfa.is_empty nfa1);
+  let dfa2 = Dfa.nfa_to_dfa nfa1 in
+  let nfa3 = Dfa.to_nfa dfa2 in
+  Printf.printf "%b" (Nfa.is_empty nfa3);
+  [%expect {| falsefalse |}]
+;;
+
+let%expect_test "negations via dfa" =
+  let lang1 = "b*" in
+  let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
+  Nfa.prune nfa1;
+  let dfa1 = Dfa.nfa_to_dfa nfa1 in
+  let nfa2 = Re.parse lang1 |> Nfa.re_to_nfa in
+  Nfa.prune nfa2;
+  let dfa2 = Dfa.nfa_to_dfa nfa2 in
+  let dfa2 = Dfa.complement dfa2 in
+  let dfa3 = Dfa.product_intersection dfa1 dfa2 in
+  Printf.printf "%b" (Dfa.is_empty dfa3);
+  [%expect {| true |}]
+;;
+
+let%expect_test "negations via ????" =
+  let lang1 = "b*" in
+  let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
+  Nfa.prune nfa1;
+  let dfa2 = Dfa.nfa_to_dfa nfa1 in
+  let dfa3 = Dfa.complement dfa2 in
+  let nfa4 = Dfa.to_nfa dfa3 in
+  let nfa5 = Nfa.intersect nfa4 nfa1 in
+  Printf.printf "%b" (Nfa.is_empty nfa5);
+  [%expect {| true |}]
+;;
