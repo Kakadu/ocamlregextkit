@@ -2,6 +2,7 @@ open Tree
 
 type state = int
 type nfa = state Adt.automata
+(* TODO(Kakadu): OCaml convention recommends to call a type realted to module by a name 't' *)
 
 let get_states = Adt.get_states
 let get_alphabet = Adt.get_alphabet
@@ -145,9 +146,9 @@ let is_accepted n s =
   for i = 0 to String.length s - 1 do
     let c = String.make 1 s.[i] in
     sts
-    := eps_reachable_set
-         n
-         (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
+      := eps_reachable_set
+           n
+           (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
   done;
   List.exists (is_accepting n) !sts
 ;;
@@ -291,14 +292,7 @@ let re_to_nfa re =
     accepting
 ;;
 
-(*
-   let log fmt =
-   if true
-   then Stdlib.Format.kasprintf (Stdlib.Format.eprintf "%s\n%!") fmt
-   else Stdlib.Format.ifprintf Stdlib.Format.std_formatter fmt
-   ;; *)
-
-let intersect left right =
+let intersect ?(verbose = false) left right =
   (* TODO: merge alphabets *)
   let unionAlphabet = Utils.list_union (get_alphabet left) (get_alphabet right) in
   let last_state = ref 0 in
@@ -312,23 +306,72 @@ let intersect left right =
           (fun s2 ->
             incr last_state;
             Hashtbl.add new_states (s1, s2) !last_state;
-            (* log "Add state (%d,%d) -> %d" s1 s2 !last_state; *)
             if Adt.is_accepting left s1 && Adt.is_accepting right s2
-            then cartAccepting := !last_state :: !cartAccepting)
+            then (
+              let () =
+                if verbose then Printf.printf "state (%d,%d) is accepting\n" s1 s2
+              in
+              cartAccepting := !last_state :: !cartAccepting))
           right)
       left
   in
+  let add_trans ?msg x =
+    cartTrans := x :: !cartTrans;
+    if verbose then Option.iter print_endline msg
+  in
   left
-  |> Adt.iter_transitions (fun (slf, cl, slt) ->
+  |> Adt.iter_transitions (fun (start1, lab1, fin1) ->
     right
-    |> Adt.iter_transitions (fun (srf, cr, srt) ->
-      if cl = cr
-      then (
-        match Hashtbl.find new_states (slf, srf), Hashtbl.find new_states (slt, srt) with
-        | exception Not_found ->
-          (* It could be after minimization *)
-          ()
-        | new_from, new_to -> cartTrans := (new_from, cl, new_to) :: !cartTrans)));
+    |> Adt.iter_transitions (fun (start2, lab2, fin2) ->
+      match
+        Hashtbl.find new_states (start1, start2), Hashtbl.find new_states (fin1, fin2)
+      with
+      | exception Not_found ->
+        (* It could happen after minimization *)
+        ()
+      | new_from, new_to ->
+        (* TODO: Why state will be found? *)
+        if lab1 = lab2 && lab1 = "ε"
+        then (
+          add_trans (new_from, lab1, new_to);
+          add_trans (new_from, lab1, Hashtbl.find new_states (start1, fin2));
+          add_trans (new_from, lab1, Hashtbl.find new_states (fin1, start2)))
+        else if lab1 = lab2
+        then
+          add_trans
+            ~msg:
+              (Printf.sprintf
+                 "add (%d,%d) -> (%d,%d) with %S I"
+                 start1
+                 start2
+                 fin1
+                 fin2
+                 lab1)
+            (new_from, lab1, new_to)
+        else if lab1 = "ε"
+        then
+          add_trans
+            ~msg:
+              (Printf.sprintf
+                 "add (%d,%d) -> (%d,%d) with %S II"
+                 start1
+                 start2
+                 fin1
+                 start2
+                 lab1)
+            (new_from, lab1, Hashtbl.find new_states (fin1, start2))
+        else if lab2 = "ε"
+        then
+          add_trans
+            ~msg:
+              (Printf.sprintf
+                 "add (%d,%d) -> (%d,%d) with %S III"
+                 start1
+                 start2
+                 start1
+                 fin2
+                 lab1)
+            (new_from, lab2, Hashtbl.find new_states (start1, fin2))));
   Adt.create_automata
     (Hashtbl.to_seq_values new_states |> List.of_seq)
     unionAlphabet
