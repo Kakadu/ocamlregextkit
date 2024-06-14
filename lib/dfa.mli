@@ -138,4 +138,6 @@ val print : dfa -> unit
     @return a representation of the DFA [m] in the DOT language for Graphviz *)
 val export_graphviz : dfa -> string
 
-val to_nfa : dfa -> Nfa.nfa
+(** [nfa_of_dfa dfa]
+    @return NFA constructed as a coercion from DFA *)
+val nfa_of_dfa : dfa -> Nfa.nfa

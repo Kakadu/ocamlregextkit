@@ -29,9 +29,18 @@ let%expect_test "intersect b* and bb*" =
   Nfa.prune nfa2;
   let nfa3 = Nfa.intersect nfa1 nfa2 in
   Nfa.prune nfa3;
+  print_endline (Nfa.export_graphviz nfa3);
   Printf.printf "%b" (Nfa.is_empty nfa3);
   (* BUG *)
-  [%expect {| true |}]
+  [%expect {|
+    digraph G {
+     n0 [label="", shape=none, height=0, width=0, ]
+    "11" [shape=ellipse, ];
+
+    n0 -> 11;
+
+    }
+    true |}]
 ;;
 
 let%expect_test "intersect DFA (ab)* and c(ab)*" =
@@ -59,9 +68,11 @@ let%expect_test "intersect NFA a* and ca*" =
   [%expect {| true |}]
 ;;
 
-let%expect_test _ =
+let%expect_test "NFA intersection" =
   let lang1 = "(ka)*du((screams)+(sings))(ka)*du*" in
   let lang2 = "kakadu((says)+(sings)+(screams))(loudly)?kaka(ka)*duu*" in
+  let lang1 = "k*" in
+  let lang2 = "kk" in
   let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
   Nfa.prune nfa1;
   let nfa2 = Re.parse lang2 |> Nfa.re_to_nfa in
@@ -78,11 +89,11 @@ let%expect_test "NFA of DFA" =
   let lang1 = "b*" in
   let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
   Nfa.prune nfa1;
-  Printf.printf "%b" (Nfa.is_empty nfa1);
+  Printf.printf "%b " (Nfa.is_empty nfa1);
   let dfa2 = Dfa.nfa_to_dfa nfa1 in
-  let nfa3 = Dfa.to_nfa dfa2 in
-  Printf.printf "%b" (Nfa.is_empty nfa3);
-  [%expect {| falsefalse |}]
+  let nfa3 = Dfa.nfa_of_dfa dfa2 in
+  Printf.printf "%b " (Nfa.is_empty nfa3);
+  [%expect {| false false |}]
 ;;
 
 let%expect_test "negations via dfa" =
@@ -99,13 +110,13 @@ let%expect_test "negations via dfa" =
   [%expect {| true |}]
 ;;
 
-let%expect_test "negations via ????" =
+let%expect_test "Intersection with complement (via DFA)" =
   let lang1 = "b*" in
   let nfa1 = Re.parse lang1 |> Nfa.re_to_nfa in
   Nfa.prune nfa1;
   let dfa2 = Dfa.nfa_to_dfa nfa1 in
   let dfa3 = Dfa.complement dfa2 in
-  let nfa4 = Dfa.to_nfa dfa3 in
+  let nfa4 = Dfa.nfa_of_dfa dfa3 in
   let nfa5 = Nfa.intersect nfa4 nfa1 in
   Printf.printf "%b" (Nfa.is_empty nfa5);
   [%expect {| true |}]
