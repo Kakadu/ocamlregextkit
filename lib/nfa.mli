@@ -89,4 +89,4 @@ val print : nfa -> unit
     @return a representation of the NFA [n] in the DOT language for Graphviz *)
 val export_graphviz : nfa -> string
 
-val intersect : nfa -> nfa -> nfa
+val intersect : ?verbose:bool -> nfa -> nfa -> nfa
