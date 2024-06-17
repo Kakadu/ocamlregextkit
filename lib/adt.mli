@@ -6,7 +6,16 @@ module SS : sig
   val fold_left : ('a -> elt -> 'a) -> 'a -> t -> 'a
 end
 
-type 't automata
+type 't automata =
+  | A :
+      { mutable states : ('t, 'cmp) Base.Set.t
+      ; mutable alphabet : SS.t
+      ; transitions : ('t, (string, 't) Hashtbl.t) Hashtbl.t
+      ; mutable start : 't
+      ; accepting : ('t, bool) Hashtbl.t
+      }
+      -> 't automata
+
 type alphabet = SS.t
 
 val map : ('b -> 'b -> int) -> ('a -> 'b) -> 'a automata -> 'b automata

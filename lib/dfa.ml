@@ -146,6 +146,8 @@ let get_accepted m =
   !shortest
 ;;
 
+let get_states : 'a Adt.automata -> 'a list = fun _ -> assert false
+
 let product_construction op m1 m2 =
   if get_alphabet m1 <> get_alphabet m2
   then
@@ -154,6 +156,20 @@ let product_construction op m1 m2 =
     List.concat
       (List.rev_map (fun e1 -> List.rev_map (fun e2 -> ProductState (e1, e2)) b) a)
   in
+  (* let cross_product_states (Adt.A a) (Adt.A a) =
+     let module Cmp : Base.Comparator.S with type t = a = struct
+     type t = a
+
+     include Base.Comparator.Make (struct
+     type t = a
+
+     let compare = state_comparator
+     let sexp_of_t _ = assert false
+     end)
+     end
+     in
+     Base.Set.fold a.states ~init:Base.Set.empty
+     in *)
   (* |find_product_trans| -- returns { ((l,r),a,(l',r')) : (l,a,l') ∧ (r,a,r') } *)
   let find_product_trans m1 m2 cartStates alphabet =
     List.fold_left
@@ -188,6 +204,7 @@ let product_construction op m1 m2 =
       cartesianStates
   in
   Adt.create_automata
+    Stdlib.compare
     cartesianStates
     (unionAlphabet |> Adt.SS.elements)
     cartTrans
