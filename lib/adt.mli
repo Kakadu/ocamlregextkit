@@ -1,4 +1,13 @@
+module SS : sig
+  include Set.S with type elt = string
+
+  val map_list : (elt -> 'a) -> t -> 'a list
+  val filter_map_list : (elt -> 'a option) -> t -> 'a list
+  val fold_left : ('a -> elt -> 'a) -> 'a -> t -> 'a
+end
+
 type 't automata
+type alphabet = SS.t
 
 val map : ('a -> 'b) -> 'a automata -> 'b automata
 
@@ -31,7 +40,7 @@ val for_all_states : ('t -> bool) -> 't automata -> bool
 
 (** [get_alphabet m]
     @return the alphabet of [m] as a list *)
-val get_alphabet : 't automata -> string list
+val get_alphabet : 't automata -> SS.t
 
 (** [iter_alphabet f m]
     applies function [f] to all words [[a1; ...; an]] of the alphabet of [m] *)
@@ -40,11 +49,11 @@ val iter_alphabet : (string -> unit) -> 't automata -> unit
 (** [map_states f m]
     applies function [f] to all words [[a1; ...; an]] of the alphabet of [m].
     @return the list [[f a1; ...; f an]]*)
-val map_alphabet : (string -> 'a) -> 't automata -> 'a list
+(* val map_alphabet : (string -> 'a) -> 't automata -> 'a list *)
 
 (** [filter_states f m]
     @return list of words of the alphabet of [m] that satisfy the predicate [f] *)
-val filter_alphabet : (string -> bool) -> 't automata -> string list
+(* val filter_alphabet : (string -> bool) -> 't automata -> string list *)
 
 (** [exists_alphabet f m]
     checks if at least one word of the alphabet of [m] satisfies the predicate [f]
@@ -112,7 +121,7 @@ val merge_states_inplace : 't automata -> 't -> 't -> unit
 
 (** [add_to_alphabet m als]
     mutates automaton [m] inplace by adding [als] to the alphabet *)
-val add_to_alphabet : 't automata -> string list -> unit
+val add_to_alphabet : 't automata -> SS.t -> unit
 
 (** [map_accepting f m]
     mutates automaton [m] inplace by applying function [f] to set of states defining acceptance *)

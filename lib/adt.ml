@@ -1,6 +1,37 @@
+module SS = struct
+  include Set.Make (String)
+
+  let fold_left f acc x = fold (Fun.flip f) x acc
+  let add_list xs ss = List.fold_left (Fun.flip add) ss xs
+  let map_list f ss = fold (fun x acc -> f x :: acc) ss []
+
+  let filter_map_list f ss =
+    fold
+      (fun x acc ->
+        match f x with
+        | Some x -> x :: acc
+        | None -> acc)
+      ss
+      []
+  ;;
+end
+
+type alphabet = SS.t
+
+(*
+   type 't automata =
+  | A :
+      { mutable states : ('t, 'cmp) Base.Set.t
+      ; mutable alphabet : SS.t
+      ; transitions : ('t, (string, 't) Hashtbl.t) Hashtbl.t
+      ; mutable start : 't
+      ; accepting : ('t, bool) Hashtbl.t
+      }
+      -> 't automata
+*)
 type 't automata =
   { mutable states : 't list
-  ; mutable alphabet : string list
+  ; mutable alphabet : SS.t
   ; transitions : ('t, (string, 't) Hashtbl.t) Hashtbl.t
   ; mutable start : 't
   ; accepting : ('t, bool) Hashtbl.t
@@ -31,11 +62,12 @@ let for_all_states f m = List.for_all f m.states
 let map_states f m = List.map f m.states
 let get_alphabet m = m.alphabet
 let set_alphabet m alph = m.alphabet <- alph
-let iter_alphabet f m = List.iter f m.alphabet
-let filter_alphabet f m = List.filter f m.alphabet
-let map_alphabet f m = List.map f m.alphabet
-let exists_alphabet f m = List.exists f m.alphabet
-let for_all_alphabet f m = List.for_all f m.alphabet
+let iter_alphabet f m = SS.iter f m.alphabet
+
+(* let filter_alphabet f m = SS.filter f m.alphabet *)
+(* let map_alphabet f m = SS.map f m.alphabet *)
+let exists_alphabet f m = SS.exists f m.alphabet
+let for_all_alphabet f m = SS.for_all f m.alphabet
 
 let get_transitions m =
   Hashtbl.fold
@@ -83,15 +115,17 @@ let is_accepting m s =
   | Some res -> res
 ;;
 
-let get_reachable_states m =
-  let rec find_reachable_states marked =
+let get_reachable_states : 'a. 'a automata -> 'a list =
+  fun m ->
+  let rec find_reachable_states : _ list -> _ list =
+    fun marked ->
     let newmarked =
       List.fold_left
         (fun acc s ->
-          List.fold_left
+          SS.fold_left
             (fun acc2 a -> Utils.list_union acc2 (get_next_states m s a))
             acc
-            ("ε" :: m.alphabet))
+            (SS.add "ε" m.alphabet))
         marked
         marked
     in
@@ -114,9 +148,7 @@ let merge_states_inplace m p q =
   if m.start = q then m.start <- p
 ;;
 
-let add_to_alphabet m alph =
-  set_alphabet m (List.sort compare (Utils.list_union m.alphabet alph))
-;;
+let add_to_alphabet m alph = set_alphabet m (SS.union m.alphabet alph)
 
 let map_accepting_inplace f m =
   Hashtbl.filter_map_inplace (fun k _ -> Some (f k)) m.accepting
@@ -144,5 +176,10 @@ let create_automata qs alph tran init fin =
   List.iter (fun (s, a, t) -> Hashtbl.add (Hashtbl.find transitions s) a t) tran;
   let accepting = Hashtbl.create length in
   List.iter (fun s -> Hashtbl.add accepting s (List.mem s fin)) qs;
-  { states = qs; alphabet = List.sort compare alph; transitions; start = init; accepting }
+  { states = qs
+  ; alphabet = SS.add_list alph SS.empty
+  ; transitions
+  ; start = init
+  ; accepting
+  }
 ;;

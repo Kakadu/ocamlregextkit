@@ -4,7 +4,7 @@ open Regextkit
 let _test_dfa_pred_succ m =
   if List.exists
        (fun s ->
-         List.exists
+         Regextkit__Adt.SS.exists
            (fun a ->
              let succ = Dfa.succ m s a in
              not (List.mem s (Dfa.pred m succ a)))
@@ -18,7 +18,7 @@ let _test_dfa_total m =
   if not
        (List.for_all
           (fun s ->
-            List.for_all
+            Regextkit__Adt.SS.for_all
               (fun a ->
                 let ts =
                   List.find_all
@@ -39,7 +39,9 @@ let _test_nfa_pred_succ n =
          List.exists
            (fun ss ->
              not
-               (List.exists (fun a -> List.mem s (Nfa.succ n ss a)) (Nfa.get_alphabet n)))
+               (Regextkit__Adt.SS.exists
+                  (fun a -> List.mem s (Nfa.succ n ss a))
+                  (Nfa.get_alphabet n)))
            pred)
        (Nfa.get_states n)
   then exit 1
@@ -198,9 +200,7 @@ let _construction_tester () =
       if List.length (Dfa.get_states minimal) = List.length (Dfa.get_states dfa2)
       then incr num_minimal;
       error
-        := List.length (Dfa.get_states dfa2)
-           - List.length (Dfa.get_states minimal)
-           + !error;
+      := List.length (Dfa.get_states dfa2) - List.length (Dfa.get_states minimal) + !error;
       num_states := List.length (Dfa.get_states minimal) + !num_states
     done;
     Printf.printf

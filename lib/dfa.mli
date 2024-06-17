@@ -12,7 +12,7 @@ val get_states : dfa -> state list
 
 (** [get_alphabet m]
     @return the alphabet of DFA [m] as a list *)
-val get_alphabet : dfa -> string list
+val get_alphabet : dfa -> Adt.SS.t
 
 (** [get_transitions m]
     @return the transition function of DFA [m] as a list of tuples [(s,a,t)] *)

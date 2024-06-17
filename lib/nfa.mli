@@ -9,7 +9,7 @@ val get_states : nfa -> state list
 
 (** [get_alphabet n]
     @return the alphabet of NFA [n] as a list *)
-val get_alphabet : nfa -> string list
+val get_alphabet : nfa -> Adt.SS.t
 
 (** [get_transitions n]
     @return the transition function of NFA [n] as a list of tuples [(s,a,t)] *)

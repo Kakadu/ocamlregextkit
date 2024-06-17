@@ -116,7 +116,7 @@ let pred n state =
   let preds =
     List.fold_left
       (fun acc s ->
-        List.fold_left
+        Adt.SS.fold_left
           (fun acc' a -> Utils.list_union acc' (Adt.get_prev_states n s a))
           acc
           (get_alphabet n))
@@ -146,9 +146,9 @@ let is_accepted n s =
   for i = 0 to String.length s - 1 do
     let c = String.make 1 s.[i] in
     sts
-      := eps_reachable_set
-           n
-           (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
+    := eps_reachable_set
+         n
+         (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
   done;
   List.exists (is_accepting n) !sts
 ;;
@@ -169,14 +169,15 @@ let get_accepted n =
           (fun t -> if not (List.mem t !seen) then Some (t, currentWord) else None)
           (Adt.get_next_states n currentState "ε")
       and newt =
-        List.concat_map
-          (fun a ->
-            let nexts = Adt.get_next_states n currentState a in
-            List.filter_map
-              (fun t ->
-                if not (List.mem t !seen) then Some (t, currentWord ^ a) else None)
-              nexts)
-          (get_alphabet n)
+        List.concat
+        @@ Adt.SS.map_list
+             (fun a ->
+               let nexts = Adt.get_next_states n currentState a in
+               List.filter_map
+                 (fun t ->
+                   if not (List.mem t !seen) then Some (t, currentWord ^ a) else None)
+                 nexts)
+             (get_alphabet n)
       in
       queue := List.tl !queue @ newteps @ newt)
   done;
@@ -294,7 +295,7 @@ let re_to_nfa re =
 
 let intersect ?(verbose = false) left right =
   (* TODO: merge alphabets *)
-  let unionAlphabet = Utils.list_union (get_alphabet left) (get_alphabet right) in
+  let unionAlphabet = Adt.SS.union (get_alphabet left) (get_alphabet right) in
   let last_state = ref 0 in
   let new_states : (state * state, state) Hashtbl.t = Hashtbl.create 42 in
   let cartAccepting = ref [] in
@@ -374,7 +375,7 @@ let intersect ?(verbose = false) left right =
             (new_from, lab2, Hashtbl.find new_states (start1, fin2))));
   Adt.create_automata
     (Hashtbl.to_seq_values new_states |> List.of_seq)
-    unionAlphabet
+    (unionAlphabet |> Adt.SS.elements)
     !cartTrans
     (Hashtbl.find new_states (Adt.get_start left, Adt.get_start right))
     !cartAccepting
