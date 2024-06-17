@@ -18,12 +18,22 @@
 (package
  (name ocamlregextkit)
  (synopsis "A regular expression toolkit for OCaml")
- (description "Provides data structures and algorithms for Regular Expressions, Deterministic Finite Automata, and Non-Deterministic Finite Automata")
- (depends 
-    (ocaml (>= 4.14))
-    dune
-  )
+ (description
+  "Provides data structures and algorithms for Regular Expressions, Deterministic Finite Automata, and Non-Deterministic Finite Automata")
+ (depends
+  (ocaml
+   (>= 4.14))
+  dune
+  ppx_inline_test
+  ppx_expect)
  (tags
-  (automata "regular expressions" "regular languages" regex library DFA NFA RE)))
+  (automata
+   "regular expressions"
+   "regular languages"
+   regex
+   library
+   DFA
+   NFA
+   RE)))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
