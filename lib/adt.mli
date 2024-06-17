@@ -9,11 +9,11 @@ end
 type 't automata
 type alphabet = SS.t
 
-val map : ('a -> 'b) -> 'a automata -> 'b automata
+val map : ('b -> 'b -> int) -> ('a -> 'b) -> 'a automata -> 'b automata
 
 (** [get_states m]
     @return a list of all states in [m] *)
-val get_states : 't automata -> 't list
+(* val get_states : 't automata -> 't list *)
 
 (** [iter_states f m]
     applies function [f] to all states [[s1; ...; sn]] of [m] *)
@@ -22,11 +22,11 @@ val iter_states : ('t -> unit) -> 't automata -> unit
 (** [map_states f m]
     applies function [f] to all states [[s1; ...; sn]] of [m].
     @return the list [[f s1; ...; f sn]]*)
-val map_states : ('t -> 'a) -> 't automata -> 'a list
+(* val map_states : ('a -> 'a -> 'int) -> ('t -> 'a) -> 't automata -> 'a list *)
 
 (** [filter_states f m]
     @return list of states of [m] that satisfy the predicate [f] *)
-val filter_states : ('t -> bool) -> 't automata -> 't list
+(* val filter_states : ('t -> bool) -> 't automata -> 't list *)
 
 (** [exists_states f m]
     checks if at least one state of [m] satisfies the predicate [f]
@@ -135,7 +135,8 @@ val copy : 't automata -> 't automata
     @return
       an automata of States [q], alphabet [al], transition function [t], initial state [s], and accepting states [f]. *)
 val create_automata
-  :  't list
+  :  ('t -> 't -> int)
+  -> 't list
   -> string list
   -> ('t * string * 't) list
   -> 't

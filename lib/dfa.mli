@@ -8,7 +8,7 @@ type dfa = state Adt.automata
 
 (** [get_states m]
     @return a list of all states in DFA [m] *)
-val get_states : dfa -> state list
+(* val get_states : dfa -> state list *)
 
 (** [get_alphabet m]
     @return the alphabet of DFA [m] as a list *)

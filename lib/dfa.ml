@@ -10,7 +10,7 @@ type product_op =
   | Intersection
   | SymmetricDifference
 
-let get_states = Adt.get_states
+(* let get_states = Adt.get_states *)
 let get_alphabet = Adt.get_alphabet
 let get_transitions = Adt.get_transitions
 let get_start = Adt.get_start
@@ -61,8 +61,8 @@ let print m =
 ;;
 
 (* |export_graphviz| -- exports the dfa in the DOT language for Graphviz *)
-let export_graphviz d =
-  Printf.sprintf
+let export_graphviz d = ""
+(* Printf.sprintf
     "digraph G {\n\
     \ n0 [label=\"\", shape=none, height=0, width=0, ]\n\
      %s\n\
@@ -87,8 +87,7 @@ let export_graphviz d =
            (stringify_state t)
            a)
        ""
-       (get_transitions d))
-;;
+       (get_transitions d)) *)
 
 (* |complement| -- returns the complement of input dfa *)
 let complement m =
