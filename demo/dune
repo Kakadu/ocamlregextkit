@@ -7,3 +7,8 @@
  (name demo2)
  (modules demo2)
  (libraries regextkit))
+
+(executable
+ (name demo3)
+ (modules demo3)
+ (libraries regextkit))
