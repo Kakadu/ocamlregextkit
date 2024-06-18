@@ -13,7 +13,7 @@ val get_alphabet : nfa -> Adt.SS.t
 
 (** [get_transitions n]
     @return the transition function of NFA [n] as a list of tuples [(s,a,t)] *)
-val get_transitions : nfa -> (state * string * state) list
+val get_transitions : nfa -> (state * Adt.mark * state) list
 
 (** [get_start n]
     @return the initial state of NFA [n] *)
@@ -29,7 +29,7 @@ val is_accepting : nfa -> state -> bool
 
 (** [succ n s w]
     @return a list of successor states of NFA [n] after reading word [w] from state [s] *)
-val succ : nfa -> state -> string -> state list
+val succ : nfa -> state -> Adt.mark -> state list
 
 (** [pred n s]
     @return a list of states that preceed the state [s] in NFA [n] *)
@@ -76,7 +76,7 @@ val is_accepted : nfa -> string -> bool
 
 (** [get_accepted n]
     @return the shortest string accepted by NFA [n] *)
-val get_accepted : nfa -> string option
+(* val get_accepted : nfa -> string option *)
 
 (** [merge_alphabets n1 n2]
     mutates NFAs [n1] and [n2] such that they share a common alphabet *)

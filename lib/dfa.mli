@@ -16,7 +16,7 @@ val get_alphabet : dfa -> Adt.SS.t
 
 (** [get_transitions m]
     @return the transition function of DFA [m] as a list of tuples [(s,a,t)] *)
-val get_transitions : dfa -> (state * string * state) list
+val get_transitions : dfa -> (state * Adt.mark * state) list
 
 (** [get_start m]
     @return the initial state of DFA [m] *)
@@ -32,12 +32,12 @@ val is_accepting : dfa -> state -> bool
 
 (** [succ m s w]
     @return the successor state of DFA [m] after reading word [w] from state [s] *)
-val succ : dfa -> state -> string -> state
+val succ : dfa -> state -> Adt.mark -> state
 
 (** [pred m s w]
     @return
       the set of predecessor states of DFA [m] before reading word [w] from state [s] *)
-val pred : dfa -> state -> string -> state list
+val pred : dfa -> state -> Adt.mark -> state list
 
 (** [create q al t s f]
     @return

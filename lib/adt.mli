@@ -1,5 +1,13 @@
+type mark = int
+
+val eps : mark
+val string_of_mark : mark -> string
+val mark_of_string_exn : string -> mark
+val mark_of_char : char -> mark
+val inject_transitions : ('a * string * 'b) list -> ('a * mark * 'b) list
+
 module SS : sig
-  include Set.S with type elt = string
+  include Set.S with type elt = mark
 
   val map_list : (elt -> 'a) -> t -> 'a list
   val filter_map_list : (elt -> 'a option) -> t -> 'a list
@@ -44,7 +52,7 @@ val get_alphabet : 't automata -> SS.t
 
 (** [iter_alphabet f m]
     applies function [f] to all words [[a1; ...; an]] of the alphabet of [m] *)
-val iter_alphabet : (string -> unit) -> 't automata -> unit
+val iter_alphabet : (mark -> unit) -> 't automata -> unit
 
 (** [map_states f m]
     applies function [f] to all words [[a1; ...; an]] of the alphabet of [m].
@@ -58,25 +66,25 @@ val iter_alphabet : (string -> unit) -> 't automata -> unit
 (** [exists_alphabet f m]
     checks if at least one word of the alphabet of [m] satisfies the predicate [f]
     @return [true] iff [(f a1) || ... || (f an)] *)
-val exists_alphabet : (string -> bool) -> 't automata -> bool
+val exists_alphabet : (mark -> bool) -> 't automata -> bool
 
 (** [for_all_alphabet f m]
     checks if all words [[a1; ...; an]] of the alphabet of [m] satisfy the predicate [f]
     @return [true] iff [(f a1) && ... && (f an)] *)
-val for_all_alphabet : (string -> bool) -> 't automata -> bool
+val for_all_alphabet : (mark -> bool) -> 't automata -> bool
 
 (** [get_transitions m]
     @return the transition function of [m] as a list of tuples [(s,a,t)] *)
-val get_transitions : 't automata -> ('t * string * 't) list
+val get_transitions : 't automata -> ('t * mark * 't) list
 
 (** [iter_transitions f m]
     applies function [f] to all transitions [(s,a,t)] of [m] *)
-val iter_transitions : ('t * string * 't -> unit) -> 't automata -> unit
+val iter_transitions : ('t * mark * 't -> unit) -> 't automata -> unit
 
 (** [map_transitions f m]
     applies function [f] to all transitions [(s,a,t)] of [m].
     @return the list [[f (s1,a1,t1); ...; f (sn,an,tn)]] *)
-val map_transitions : ('t * string * 't -> 'a) -> 't automata -> 'a list
+val map_transitions : ('t * mark * 't -> 'a) -> 't automata -> 'a list
 
 (** [get_start m]
     @return the initial state of [m] *)
@@ -97,11 +105,11 @@ val map_accepting : ('t -> 'a) -> 't automata -> 'a list
 
 (** [get_next_states m s a]
     @return the successor states of [m] after reading letter [a] from state [s] *)
-val get_next_states : 't automata -> 't -> string -> 't list
+val get_next_states : 't automata -> 't -> mark -> 't list
 
 (** [get_prev_states m s a]
     @return the list of predecessor states of [m] before reading letter [a] from state [s] *)
-val get_prev_states : 't automata -> 't -> string -> 't list
+val get_prev_states : 't automata -> 't -> mark -> 't list
 
 (** [is_accepting m s]
     @return [true] iff state [s] is an accepting state of [m] *)
@@ -138,6 +146,14 @@ val create_automata
   :  't list
   -> string list
   -> ('t * string * 't) list
+  -> 't
+  -> 't list
+  -> 't automata
+
+val create_automata_gen
+  :  't list
+  -> SS.t
+  -> ('t * mark * 't) list
   -> 't
   -> 't list
   -> 't automata

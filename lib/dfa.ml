@@ -38,7 +38,7 @@ let print m =
   print_string "alphabet: ";
   Adt.iter_alphabet
     (fun a ->
-      print_string a;
+      print_string (Adt.string_of_mark a);
       print_char ' ')
     m;
   print_newline ();
@@ -54,7 +54,7 @@ let print m =
     (fun (s, a, t) ->
       print_string "    ";
       print_string (stringify_state s);
-      print_string ("\t--" ^ a ^ "-->\t");
+      print_string ("\t--" ^ Adt.string_of_mark a ^ "-->\t");
       print_string (stringify_state t);
       print_newline ())
     m
@@ -85,7 +85,7 @@ let export_graphviz d =
            acc
            (stringify_state s)
            (stringify_state t)
-           a)
+           (Adt.string_of_mark a))
        ""
        (get_transitions d))
 ;;
@@ -114,14 +114,13 @@ let is_empty m =
 
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)
 let is_accepted m s =
-  let rec does_accept state = function
-    | "" -> is_accepting m state
-    | str ->
-      does_accept
-        (succ m state (String.make 1 str.[0]))
-        (String.sub str 1 (String.length str - 1))
+  let len = String.length s in
+  let rec does_accept state i =
+    if i >= len
+    then is_accepting m state
+    else does_accept (succ m state (Adt.mark_of_char s.[i])) (1 + i)
   in
-  does_accept (get_start m) s
+  does_accept (get_start m) 0
 ;;
 
 (* |get_accepted| -- returns the shortest word accepted by dfa m *)
@@ -139,7 +138,9 @@ let get_accepted m =
         Adt.SS.filter_map_list
           (fun a ->
             let t = succ m currentState a in
-            if not (List.mem t !seen) then Some (t, currentWord ^ a) else None)
+            if not (List.mem t !seen)
+            then Some (t, currentWord ^ Adt.string_of_mark a)
+            else None)
           (get_alphabet m)
       in
       queue := List.tl !queue @ newt)
@@ -189,9 +190,9 @@ let product_construction op m1 m2 =
         | _ -> false)
       cartesianStates
   in
-  Adt.create_automata
+  Adt.create_automata_gen
     cartesianStates
-    (unionAlphabet |> Adt.SS.elements)
+    unionAlphabet
     cartTrans
     (ProductState (get_start m1, get_start m2))
     cartAccepting
@@ -268,15 +269,15 @@ let disjoin_dfas m1 m2 =
   and newtrans1 = get_transitions m1 @ !missingtran1 in
   let newstate2 = if !hassink2 then get_states m2 else State [] :: get_states m2
   and newtrans2 = get_transitions m2 @ !missingtran2 in
-  ( Adt.create_automata
+  ( Adt.create_automata_gen
       newstate1
-      (merged_alphabet |> Adt.SS.elements)
+      merged_alphabet
       newtrans1
       (get_start m1)
       (get_accepting m1)
-  , Adt.create_automata
+  , Adt.create_automata_gen
       (List.rev_map (fun s -> negate_state s) newstate2)
-      (merged_alphabet |> Adt.SS.elements)
+      merged_alphabet
       (List.rev_map (fun (s, a, t) -> negate_state s, a, negate_state t) newtrans2)
       (negate_state (get_start m2))
       (Adt.map_accepting (fun s -> negate_state s) m2) )
@@ -414,9 +415,9 @@ let brzozowski_min m =
           | _ -> None)
         !newstates
     in
-    Adt.create_automata
+    Adt.create_automata_gen
       !newstates
-      (get_alphabet d |> Adt.SS.elements)
+      (get_alphabet d)
       !newtrans
       (State newstart)
       newaccepting
@@ -508,18 +509,34 @@ let nfa_to_dfa (n : Nfa.nfa) =
         | _ -> false)
       !newstates
   in
-  Adt.create_automata
+  Adt.create_automata_gen
     !newstates
-    (get_alphabet n |> Adt.SS.elements)
+    (get_alphabet n)
     !newtrans
     (State newstart)
     newaccepting
 ;;
 
+let marks_of_re : Tree.re -> Adt.alphabet =
+  fun re ->
+  let rec helper acc = function
+    | Tree.Literal "ε" -> Adt.SS.add Adt.eps acc
+    | Literal s ->
+      if String.length s = 1
+      then Adt.SS.add Adt.(mark_of_char s.[0]) acc
+      else assert false
+    | Epsilon | Empty -> acc
+    | Union (r1, r2) | Concat (r1, r2) ->
+      helper (helper acc r1) r2 (* Utils.list_union (get_alphabet r1) (get_alphabet r2) *)
+    | Star r1 -> helper acc r1
+  in
+  helper Adt.SS.empty re
+;;
+
 (* |re_to_dfa| -- Converts re to (almost) minimal dfa by Brzozowski derivatives *)
 let re_to_dfa (r : Tree.re) =
   let r' = Re.simplify r in
-  let alphabet = Re.get_alphabet r' in
+  let alphabet = marks_of_re r' in
   let w = ref [ r', State [ 0 ] ] in
   let states = ref [ r', State [ 0 ] ] in
   let trans = ref [] in
@@ -527,9 +544,9 @@ let re_to_dfa (r : Tree.re) =
   while List.length !w > 0 do
     let re, s = List.hd !w in
     w := List.tl !w;
-    List.iter
+    Adt.SS.iter
       (fun c ->
-        let deriv = Re.simplify (Re.derivative re c) in
+        let deriv = Re.simplify (Re.derivative re (Adt.string_of_mark c)) in
         let t =
           match List.assoc_opt deriv !states with
           | Some tt -> tt
@@ -546,14 +563,14 @@ let re_to_dfa (r : Tree.re) =
   let accepting =
     List.filter_map (fun (re, s) -> if Re.is_nullable re then Some s else None) !states
   in
-  Adt.create_automata newstates alphabet !trans (State [ 0 ]) accepting
+  Adt.create_automata_gen newstates alphabet !trans (State [ 0 ]) accepting
 ;;
 
 (* |copy| -- Creates a deep copy of DFA *)
 let copy = Adt.copy
 
 (* |create| -- Creates DFA, Renames states as their index in qs *)
-let create qs alph tran init fin =
+let create_gen qs (alph : Adt.SS.t) (tran : (_ * Adt.mark * _) list) init fin =
   (* Check parameters for correctness *)
   if not (List.mem init qs)
   then raise (Invalid_argument "DFA Initial State not in States");
@@ -565,11 +582,11 @@ let create qs alph tran init fin =
   let checkseentran = ref [] in
   List.iter
     (fun (s, a, t) ->
-      if a = "ε" then raise (Invalid_argument "DFA cannot contain ε-transitions");
+      if a = Adt.eps then raise (Invalid_argument "DFA cannot contain ε-transitions");
       if List.mem (s, a) !checkseentran
       then raise (Invalid_argument "DFA Transition function not valid")
       else checkseentran := (s, a) :: !checkseentran;
-      if not (List.mem a alph && List.mem s qs && List.mem t qs)
+      if not (Adt.SS.mem a alph && List.mem s qs && List.mem t qs)
       then raise (Invalid_argument "DFA Transition function not valid"))
     tran;
   let newstates = List.init (List.length qs) (fun i -> State [ i ]) in
@@ -587,7 +604,7 @@ let create qs alph tran init fin =
   let missingtran = ref []
   and hassink1 = ref false
   and sink = ref (State []) in
-  if List.length newtran < List.length newstates * List.length alph
+  if List.length newtran < List.length newstates * Adt.SS.cardinal alph
   then (
     (sink
      := match
@@ -602,15 +619,16 @@ let create qs alph tran init fin =
           t
         | None -> State [ List.length qs ]);
     missingtran
-    := List.concat_map
-         (fun a ->
-           List.filter_map
-             (fun s ->
-               if not (List.exists (fun (s', a', _) -> s = s' && a = a') newtran)
-               then Some (s, a, !sink)
-               else None)
-             (Utils.add_unique !sink newstates))
-         alph);
+    := List.concat
+       @@ Adt.SS.map_list
+            (fun a ->
+              List.filter_map
+                (fun s ->
+                  if not (List.exists (fun (s', a', _) -> s = s' && a = a') newtran)
+                  then Some (s, a, !sink)
+                  else None)
+                (Utils.add_unique !sink newstates))
+            alph);
   let newstates =
     if List.length !missingtran > 0 then newstates @ [ !sink ] else newstates
   in
@@ -619,7 +637,19 @@ let create qs alph tran init fin =
     then !missingtran @ newtran
     else !missingtran @ newtran
   in
-  Adt.create_automata newstates alph newtrans newinit newfin
+  Adt.create_automata_gen newstates alph newtrans newinit newfin
+;;
+
+let create qs alph (tran : (_ * string * _) list) init fin =
+  create_gen
+    qs
+    (List.fold_left
+       (fun acc s -> Adt.SS.add (Adt.mark_of_string_exn s) acc)
+       Adt.SS.empty
+       alph)
+    (Adt.inject_transitions tran)
+    init
+    fin
 ;;
 
 let nfa_of_dfa self =

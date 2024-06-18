@@ -1,5 +1,5 @@
 module SS = struct
-  include Set.Make (String)
+  include Set.Make (Int)
 
   let fold_left f acc x = fold (Fun.flip f) x acc
   let add_list xs ss = List.fold_left (Fun.flip add) ss xs
@@ -29,10 +29,38 @@ type alphabet = SS.t
       }
       -> 't automata
 *)
+
+(** ASCII code for character on the edge. *)
+type mark = int
+
+[@@@ocaml.warnerror "-32"]
+
+(* Label for empty transitions *)
+let eps : mark = min_int
+let cmp_mark = Int.compare
+
+let mark_of_string_exn = function
+  | "ε" -> eps
+  | s when String.length s = 1 -> Char.code s.[0]
+  | _ -> assert false
+;;
+
+let mark_of_char = Char.code
+
+let string_of_mark m =
+  if m = eps
+  then "ε"
+  else if m < 128
+  then String.make 1 (Char.chr m)
+  else failwith "Unicode not supported"
+;;
+
+let inject_transitions tran = List.map (fun (a, b, c) -> a, mark_of_string_exn b, c) tran
+
 type 't automata =
   { mutable states : 't list
   ; mutable alphabet : SS.t
-  ; transitions : ('t, (string, 't) Hashtbl.t) Hashtbl.t
+  ; transitions : ('t, (mark, 't) Hashtbl.t) Hashtbl.t
   ; mutable start : 't
   ; accepting : ('t, bool) Hashtbl.t
   }
@@ -123,9 +151,9 @@ let get_reachable_states : 'a. 'a automata -> 'a list =
       List.fold_left
         (fun acc s ->
           SS.fold_left
-            (fun acc2 a -> Utils.list_union acc2 (get_next_states m s a))
+            (fun acc2 (a : mark) -> Utils.list_union acc2 (get_next_states m s a))
             acc
-            (SS.add "ε" m.alphabet))
+            (SS.add eps m.alphabet))
         marked
         marked
     in
@@ -165,7 +193,7 @@ let copy m =
   }
 ;;
 
-let create_automata qs alph tran init fin =
+let create_automata qs (alph : string list) tran init fin =
   let length = List.length qs in
   let transitions = Hashtbl.create length in
   List.iter
@@ -173,13 +201,30 @@ let create_automata qs alph tran init fin =
       let tbl = Hashtbl.create (List.length alph) in
       Hashtbl.add transitions s tbl)
     qs;
-  List.iter (fun (s, a, t) -> Hashtbl.add (Hashtbl.find transitions s) a t) tran;
+  List.iter
+    (fun (s, (a : string), t) ->
+      Hashtbl.add (Hashtbl.find transitions s) (mark_of_string_exn a) t)
+    tran;
   let accepting = Hashtbl.create length in
   List.iter (fun s -> Hashtbl.add accepting s (List.mem s fin)) qs;
   { states = qs
-  ; alphabet = SS.add_list alph SS.empty
+  ; alphabet = SS.add_list (List.map mark_of_string_exn alph) SS.empty
   ; transitions
   ; start = init
   ; accepting
   }
+;;
+
+let create_automata_gen qs alphabet tran init fin =
+  let length = List.length qs in
+  let transitions = Hashtbl.create length in
+  List.iter
+    (fun s ->
+      let tbl = Hashtbl.create (SS.cardinal alphabet) in
+      Hashtbl.add transitions s tbl)
+    qs;
+  List.iter (fun (s, a, t) -> Hashtbl.add (Hashtbl.find transitions s) a t) tran;
+  let accepting = Hashtbl.create length in
+  List.iter (fun s -> Hashtbl.add accepting s (List.mem s fin)) qs;
+  { states = qs; alphabet; transitions; start = init; accepting }
 ;;
