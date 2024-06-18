@@ -1,4 +1,4 @@
-type mark = int
+type mark
 
 val eps : mark
 val string_of_mark : mark -> string

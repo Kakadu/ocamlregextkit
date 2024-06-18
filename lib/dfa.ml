@@ -479,43 +479,43 @@ let hopcroft_min m =
 let minimise = hopcroft_min
 
 (* |nfa_to_dfa| -- converts nfa to dfa by the subset construction *)
-let nfa_to_dfa (n : Nfa.nfa) =
-  let newstart = Nfa.eps_reachable_set n [ get_start n ] in
-  let newtrans = ref []
-  and newstates = ref [ State newstart ]
-  and stack = ref [ newstart ]
-  and donestates = ref [ newstart ] in
-  while List.length !stack > 0 do
-    let currentstate = List.hd !stack in
-    stack := List.tl !stack;
-    Adt.iter_alphabet
-      (fun a ->
-        let nextstate =
-          List.concat_map (fun s -> Adt.get_next_states n s a) currentstate
-        in
-        let epsnext = Nfa.eps_reachable_set n nextstate in
-        if not (List.mem epsnext !donestates)
-        then (
-          stack := epsnext :: !stack;
-          donestates := epsnext :: !donestates;
-          newstates := State epsnext :: !newstates);
-        newtrans := (State currentstate, a, State epsnext) :: !newtrans)
-      n
-  done;
-  let newaccepting =
-    List.filter
-      (function
-        | State s -> List.exists (Nfa.is_accepting n) s
-        | _ -> false)
-      !newstates
-  in
-  Adt.create_automata_gen
-    !newstates
-    (get_alphabet n)
-    !newtrans
-    (State newstart)
-    newaccepting
-;;
+(* let nfa_to_dfa (n : Nfa.nfa) =
+   let newstart = Nfa.eps_reachable_set n [ get_start n ] in
+   let newtrans = ref []
+   and newstates = ref [ State newstart ]
+   and stack = ref [ newstart ]
+   and donestates = ref [ newstart ] in
+   while List.length !stack > 0 do
+   let currentstate = List.hd !stack in
+   stack := List.tl !stack;
+   Adt.iter_alphabet
+   (fun a ->
+   let nextstate =
+   List.concat_map (fun s -> Adt.get_next_states n s a) currentstate
+   in
+   let epsnext = Nfa.eps_reachable_set n nextstate in
+   if not (List.mem epsnext !donestates)
+   then (
+   stack := epsnext :: !stack;
+   donestates := epsnext :: !donestates;
+   newstates := State epsnext :: !newstates);
+   newtrans := (State currentstate, a, State epsnext) :: !newtrans)
+   n
+   done;
+   let newaccepting =
+   List.filter
+   (function
+   | State s -> List.exists (Nfa.is_accepting n) s
+   | _ -> false)
+   !newstates
+   in
+   Adt.create_automata_gen
+   !newstates
+   (get_alphabet n)
+   !newtrans
+   (State newstart)
+   newaccepting
+   ;; *)
 
 let marks_of_re : Tree.re -> Adt.alphabet =
   fun re ->
@@ -652,16 +652,16 @@ let create qs alph (tran : (_ * string * _) list) init fin =
     fin
 ;;
 
-let nfa_of_dfa self =
-  let last = ref 0 in
-  let store : (state, _) Hashtbl.t = Hashtbl.create 43 in
-  let f st =
-    match Hashtbl.find store st with
-    | x -> x
-    | exception Not_found ->
-      incr last;
-      Hashtbl.add store st !last;
-      !last
-  in
-  Adt.map f self
-;;
+(* let nfa_of_dfa self =
+   let last = ref 0 in
+   let store : (state, _) Hashtbl.t = Hashtbl.create 43 in
+   let f st =
+   match Hashtbl.find store st with
+   | x -> x
+   | exception Not_found ->
+   incr last;
+   Hashtbl.add store st !last;
+   !last
+   in
+   Adt.map f self
+   ;; *)

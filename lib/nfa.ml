@@ -1,4 +1,4 @@
-open Tree
+(* open Tree
 
 type state = int
 type nfa = state Adt.automata
@@ -93,7 +93,7 @@ let eps_reachable_set n ss =
 ;;
 
 (* |reachable_states| -- returns the set of reachable states in nfa n *)
-let reachable_states = Adt.get_reachable_states
+(* let reachable_states = Adt.get_reachable_states *)
 
 (* |succ| -- the resulting states of nfa n after reading symbol *)
 let succ n state (symbol : Adt.mark) =
@@ -398,4 +398,4 @@ let intersect ?(verbose = false) left right =
     !cartTrans
     (Hashtbl.find new_states (Adt.get_start left, Adt.get_start right))
     !cartAccepting
-;;
+;; *)
