@@ -55,6 +55,7 @@ let string_of_mark m =
   else failwith "Unicode not supported"
 ;;
 
+let intersect_mark m1 m2 = if cmp_mark m1 m2 = 0 then Some m1 else None
 let inject_transitions tran = List.map (fun (a, b, c) -> a, mark_of_string_exn b, c) tran
 
 type 't automata =
