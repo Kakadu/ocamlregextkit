@@ -148,7 +148,7 @@ let get_accepted m =
 ;;
 
 let product_construction op m1 m2 =
-  if get_alphabet m1 <> get_alphabet m2
+  if not (Adt.SS.equal (get_alphabet m1) (get_alphabet m2))
   then
     raise (Invalid_argument "Cannot perform product operation over different alphabets");
   let cross_product a b =
@@ -163,9 +163,10 @@ let product_construction op m1 m2 =
         | ProductState (l, r) ->
           Adt.SS.fold_left
             (fun acc' a ->
-              let lRes = succ m1 l a
-              and rRes = succ m2 r a in
-              (ProductState (l, r), a, ProductState (lRes, rRes)) :: acc')
+              match Adt.get_next_states m1 l a, Adt.get_next_states m2 r a with
+              | [], _ | _, [] -> acc'
+              | lRes :: _, rRes :: _ ->
+                (ProductState (l, r), a, ProductState (lRes, rRes)) :: acc')
             acc
             alphabet
         | _ -> acc)

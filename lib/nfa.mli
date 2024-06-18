@@ -80,7 +80,7 @@ val get_accepted : nfa -> string option
 
 (** [merge_alphabets n1 n2]
     mutates NFAs [n1] and [n2] such that they share a common alphabet *)
-val merge_alphabets : nfa -> nfa -> unit
+val merge_alphabets : 'a Adt.automata -> 'a Adt.automata -> unit
 
 (** [print n] prints a string representation of the NFA [n] *)
 val print : nfa -> unit

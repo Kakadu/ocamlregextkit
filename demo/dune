@@ -12,3 +12,8 @@
  (name demo3)
  (modules demo3)
  (libraries regextkit))
+
+(executable
+ (name demo4)
+ (modules demo4)
+ (libraries regextkit))

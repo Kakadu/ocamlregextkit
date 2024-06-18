@@ -184,7 +184,6 @@ let get_accepted n =
   !shortest
 ;;
 
-(* |merge_alphabets| -- returns pair of nfas with a common alphabet *)
 let merge_alphabets n1 n2 =
   let alphabet1 = get_alphabet n1
   and alphabet2 = get_alphabet n2 in
