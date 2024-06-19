@@ -38,7 +38,7 @@ let print m =
   print_string "alphabet: ";
   Adt.iter_alphabet
     (fun a ->
-      print_string (Adt.string_of_mark a);
+      print_string (Adt.string_of_halfmark a);
       print_char ' ')
     m;
   print_newline ();
@@ -137,9 +137,9 @@ let get_accepted m =
       let newt =
         Adt.SS.filter_map_list
           (fun a ->
-            let t = succ m currentState a in
+            let t = succ m currentState (Adt.singleton_mark a) in
             if not (List.mem t !seen)
-            then Some (t, currentWord ^ Adt.string_of_mark a)
+            then Some (t, currentWord ^ Adt.string_of_halfmark a)
             else None)
           (get_alphabet m)
       in
@@ -164,7 +164,10 @@ let product_construction op m1 m2 =
         | ProductState (l, r) ->
           Adt.SS.fold_left
             (fun acc' a ->
-              match Adt.get_next_states m1 l a, Adt.get_next_states m2 r a with
+              match
+                ( Adt.get_next_states m1 l (Adt.singleton_mark a)
+                , Adt.get_next_states m2 r (Adt.singleton_mark a) )
+              with
               | [], _ | _, [] -> acc'
               | lRes :: _, rRes :: _ ->
                 (ProductState (l, r), a, ProductState (lRes, rRes)) :: acc')

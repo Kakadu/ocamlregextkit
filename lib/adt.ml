@@ -17,17 +17,20 @@ module SS = struct
 end
 
 type alphabet = SS.t
+type halfmark = int
 
 (** ASCII code for character on the edge. *)
 type mark =
-  { mfrom : int
-  ; mto : int
+  { mfrom : halfmark
+  ; mto : halfmark
   }
 
 let make_mark ~from mto =
   assert (from <= mto);
   { mfrom = from; mto }
 ;;
+
+let singleton_mark from = make_mark ~from from
 
 let cmp_mark { mfrom; mto } o =
   let c = Int.compare mfrom o.mfrom in
@@ -48,24 +51,31 @@ let mark_contains mark ~other = mark.mfrom <= other.mfrom && other.mto <= mark.m
         ; h : int
         }
 end *)
+[@@@ocaml.warn "-unused-value-declaration"]
+[@@@ocaml.warnerror "-unused-value-declaration"]
 
+(* A multimap *)
 module Mark_map : sig
   type 'a t
 
   val singleton : mark -> 'a -> 'a t
   val add : mark -> 'a -> 'a t -> 'a t
+  val multi_add : mark -> 'a -> 'a list t -> 'a list t
   val empty : 'a t
   val is_empty : 'a t -> bool
   val cardinal : 'a t -> int
   val length : 'a t -> int
   val find_exn : mark -> 'a t -> 'a
   val find_marks : mark -> 'a t -> mark list
-  val find_contained : mark -> 'a t -> 'a list
+  val find_contained : mark -> 'a list t -> 'a list
   val iter : (mark -> 'a -> unit) -> 'a t -> unit
   val fold : (mark -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val map : ('a -> 'b) -> 'a t -> 'b t
   val filter_map : (mark -> 'a -> 'b option) -> 'a t -> 'b t
 end = struct
+  [@@@ocaml.warn "-unused-value-declaration"]
+  [@@@ocaml.warnerror "-unused-value-declaration"]
+
   type key = mark
 
   type 'a t =
@@ -161,7 +171,7 @@ end = struct
   let find_marks m =
     let rec helper acc = function
       | Empty -> acc
-      | Node { l; v; d; r; _ } ->
+      | Node { l; v; d = _; r; _ } ->
         let acc = if mark_contains v ~other:m then m :: acc else acc in
         helper (helper acc l) r
     in
@@ -172,7 +182,7 @@ end = struct
     let rec helper acc = function
       | Empty -> acc
       | Node { l; v; d; r; _ } ->
-        let acc = if mark_contains v ~other:m then d :: acc else acc in
+        let acc = if mark_contains v ~other:m then d @ acc else acc in
         helper (helper acc l) r
     in
     fun map -> helper [] map
@@ -214,11 +224,11 @@ end = struct
     | Node { l; _ } -> min_binding l
   ;;
 
-  let rec max_binding = function
+  (* let rec max_binding = function
     | Empty -> raise Not_found
     | Node { v; d; r = Empty; _ } -> v, d
     | Node { r; _ } -> max_binding r
-  ;;
+  ;; *)
 
   let rec add_min_binding k x = function
     | Empty -> singleton k x
@@ -269,6 +279,12 @@ end = struct
        | Some d' -> join l' v d' r'
        | None -> concat l' r')
   ;;
+
+  let multi_add key v map =
+    match find_exn key map with
+    | exception Not_found -> add key [ v ] map
+    | xs -> add key (v :: xs) map
+  ;;
 end
 
 [@@@ocaml.warnerror "-32"]
@@ -300,13 +316,14 @@ let string_of_mark m =
   else failwith "Unicode not supported"
 ;;
 
+let string_of_halfmark m = if m < 128 then Printf.sprintf "%d" m else failwith ""
 let intersect_mark m1 m2 = if cmp_mark m1 m2 = 0 then Some m1 else None
 let inject_transitions tran = List.map (fun (a, b, c) -> a, mark_of_string_exn b, c) tran
 
 type 't automata =
   { mutable states : 't list
   ; mutable alphabet : SS.t
-  ; transitions : ('t, 't Mark_map.t) Hashtbl.t
+  ; transitions : ('t, 't list Mark_map.t) Hashtbl.t
   ; mutable start : 't
   ; accepting : ('t, bool) Hashtbl.t
   }
@@ -320,12 +337,9 @@ let map f from =
   Hashtbl.iter
     (fun k v ->
       let newk = f k in
-      (* let newv = Hashtbl.create (Mark_map.cardinal v) in *)
-      (* let newv = Mark_map.empty in *)
-      (* let newv =
-         Mark_map.fold (fun k v acc -> Mark_map.add k (f v) acc) v Mark_map.empty
-         in *)
-      let newv = Mark_map.map f v in
+      let newv = Mark_map.map (List.map f) v in
+      (* Hashtbl.create (Hashtbl.length v) in
+         Hashtbl. (fun k v -> Hashtbl.add newv k (f v)) v; *)
       Hashtbl.add transitions newk newv)
     from.transitions;
   let accepting = Hashtbl.create (Hashtbl.length from.accepting) in
@@ -351,21 +365,24 @@ let for_all_alphabet f m = SS.for_all f m.alphabet
 
 let get_transitions m =
   Hashtbl.fold
-    (fun s ats acc -> Mark_map.fold (fun a t acc' -> (s, a, t) :: acc') ats acc)
+    (fun s ats acc ->
+      Mark_map.fold (fun a t acc' -> List.map (fun t -> s, a, t) t @ acc') ats acc)
     m.transitions
     []
 ;;
 
 let iter_transitions f m =
-  Hashtbl.iter (fun s v -> Mark_map.iter (fun a t -> f (s, a, t)) v) m.transitions
+  Hashtbl.iter
+    (fun s v -> Mark_map.iter (fun a t -> List.iter (fun t -> f (s, a, t)) t) v)
+    m.transitions
 ;;
 
-let map_transitions f m =
-  Hashtbl.fold
-    (fun s v acc -> Mark_map.fold (fun a t acc' -> f (s, a, t) :: acc') v acc)
-    m.transitions
-    []
-;;
+(* let map_transitions f m =
+   Hashtbl.fold
+   (fun s v acc -> Mark_map.fold (fun a t acc' -> f (s, a, t) :: acc') v acc)
+   m.transitions
+   []
+   ;; *)
 
 let get_start m = m.start
 
@@ -387,7 +404,10 @@ let get_prev_states : 't automata -> 't -> mark -> 't list =
   fun m t a ->
   Hashtbl.fold
     (fun s v acc ->
-      Mark_map.fold (fun a' t' acc' -> if a = a' && t = t' then s :: acc' else acc') v acc)
+      Mark_map.fold
+        (fun a' t' acc' -> if a = a' && List.mem t t' then s :: acc' else acc')
+        v
+        acc)
     m.transitions
     []
 ;;
@@ -411,7 +431,8 @@ let get_reachable_states : 'a. 'a automata -> 'a list =
         (fun acc s ->
           SS.fold_left
             (fun acc2 a ->
-              Utils.list_union acc2 (get_next_states m s (make_mark ~from:a a)))
+              let moar = get_next_states m s (make_mark ~from:a a) in
+              Utils.list_union acc2 moar)
             acc
             marks_of_alphabet)
         marked
@@ -432,7 +453,12 @@ let merge_states_inplace m p q =
   filter_states_inplace m (fun s -> s <> q);
   Hashtbl.filter_map_inplace
     (fun _ v ->
-      Option.some @@ Mark_map.filter_map (fun _ t -> Some (if t = q then p else t)) v)
+      Option.some
+      @@ Mark_map.filter_map
+           (fun _ t ->
+             let t = List.filter_map (fun t -> Some (if t = q then p else t)) t in
+             if t = [] then None else Some t)
+           v)
     m.transitions;
   if m.start = q then m.start <- p
 ;;
@@ -454,17 +480,23 @@ let copy m =
   }
 ;;
 
-let create_automata qs (alph : string list) tran init fin =
+let create_automata (type s) qs (alph : string list) tran init fin =
   let length = List.length qs in
-  let transitions = Hashtbl.create length in
+  let transitions : (s, s list Mark_map.t) Hashtbl.t = Hashtbl.create length in
   List.iter
     (fun s ->
-      let tbl = Hashtbl.create (List.length alph) in
-      Hashtbl.add transitions s tbl)
+      (* let tbl = Hashtbl.create (List.length alph) in *)
+      Hashtbl.add transitions s Mark_map.empty)
     qs;
   List.iter
     (fun (s, (a : string), t) ->
-      Hashtbl.add (Hashtbl.find transitions s) (mark_of_string_exn a) t)
+      let m : s list Mark_map.t =
+        match Hashtbl.find transitions s with
+        | exception Not_found -> Mark_map.empty
+        | map -> Mark_map.multi_add (mark_of_string_exn a) t map
+      in
+      Hashtbl.add transitions s m
+      (* Hashtbl.add (Hashtbl.find transitions s) (mark_of_string_exn a) t *))
     tran;
   let accepting = Hashtbl.create length in
   List.iter (fun s -> Hashtbl.add accepting s (List.mem s fin)) qs;
@@ -479,12 +511,20 @@ let create_automata qs (alph : string list) tran init fin =
 let create_automata_gen qs alphabet tran init fin =
   let length = List.length qs in
   let transitions = Hashtbl.create length in
+  (* let _ : (_, _ list Mark_map.t) Hashtbl.t = tran in *)
+  let _ : (_ * _ * _) list = tran in
+  (* List.iter
+     (fun s ->
+     let tbl = Hashtbl.create (SS.cardinal alphabet) in
+     Hashtbl.add transitions s tbl)
+     qs; *)
   List.iter
-    (fun s ->
-      let tbl = Hashtbl.create (SS.cardinal alphabet) in
-      Hashtbl.add transitions s tbl)
-    qs;
-  List.iter (fun (s, a, t) -> Hashtbl.add (Hashtbl.find transitions s) a t) tran;
+    (fun (s, a, t) ->
+      match Hashtbl.find transitions s with
+      | exception Not_found -> Hashtbl.add transitions s (Mark_map.singleton a [ t ])
+      | m -> Hashtbl.add transitions s (Mark_map.multi_add a t m)
+      (* Hashtbl.add (Hashtbl.find transitions s) a t *))
+    tran;
   let accepting = Hashtbl.create length in
   List.iter (fun s -> Hashtbl.add accepting s (List.mem s fin)) qs;
   { states = qs; alphabet; transitions; start = init; accepting }
