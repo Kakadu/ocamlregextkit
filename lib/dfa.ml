@@ -117,9 +117,10 @@ let is_accepted m s =
   let rec does_accept state = function
     | "" -> is_accepting m state
     | str ->
-      does_accept
-        (succ m state (String.make 1 str.[0]))
-        (String.sub str 1 (String.length str - 1))
+      match Adt.get_next_states m state (String.make 1 str.[0]) with
+      | [] -> false
+      | x :: _ ->
+        does_accept x (String.sub str 1 (String.length str - 1))
   in
   does_accept (get_start m) s
 ;;
@@ -148,9 +149,9 @@ let get_accepted m =
 ;;
 
 let product_construction op m1 m2 =
-  if not (Adt.SS.equal (get_alphabet m1) (get_alphabet m2))
+  (* if not (Adt.SS.equal (get_alphabet m1) (get_alphabet m2))
   then
-    raise (Invalid_argument "Cannot perform product operation over different alphabets");
+    raise (Invalid_argument "Cannot perform product operation over different alphabets"); *)
   let cross_product a b =
     List.concat
       (List.rev_map (fun e1 -> List.rev_map (fun e2 -> ProductState (e1, e2)) b) a)
