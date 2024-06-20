@@ -278,6 +278,7 @@ let rec construct_rec_nfa = function
     and start = !counter - 1
     and accepting = (!counter - 1) :: f1 in
     states, alphabet, transitions, start, accepting
+  | Wildcard _ -> assert false
 ;;
 
 (* |re_to_nfa| -- converts input regex AST into nfa *)

@@ -11,6 +11,7 @@ let print re =
     | Concat (r1, r2) -> "(" ^ stringify_ast r1 ^ " . " ^ stringify_ast r2 ^ ")"
     | Star r1 -> stringify_ast r1 ^ "*"
     | Empty -> "∅"
+    | Wildcard _ -> "."
   in
   print_string (stringify_ast re);
   print_newline ()
@@ -26,6 +27,14 @@ let export_graphviz re =
       ^ " [label=\""
       ^ a
       ^ "\", shape=ellipse, ];\n"
+      ^ string_of_int parent
+      ^ " -> "
+      ^ string_of_int !count
+      ^ "[label=\"\", ];\n"
+    | Wildcard _ ->
+      incr count;
+      string_of_int !count
+      ^ " [label=\".\", shape=ellipse, ];\n"
       ^ string_of_int parent
       ^ " -> "
       ^ string_of_int !count
@@ -87,6 +96,7 @@ let export_graphviz re =
 (* |get_alphabet| -- returns the alphabet of the RE *)
 let rec get_alphabet = function
   | Literal a -> [ a ]
+  | Wildcard a -> Tree.String_set.elements a
   | Epsilon | Empty -> []
   | Union (r1, r2) | Concat (r1, r2) ->
     Utils.list_union (get_alphabet r1) (get_alphabet r2)
@@ -94,7 +104,7 @@ let rec get_alphabet = function
 ;;
 
 let is_literal = function
-  | Literal _ | Epsilon | Empty -> true
+  | Literal _ | Epsilon | Empty | Wildcard _ -> true
   | _ -> false
 ;;
 
@@ -111,7 +121,7 @@ let rec contains a re =
 
 let rec containsNonLit = function
   | Union (r1, r2) -> containsNonLit r1 || containsNonLit r2
-  | Epsilon | Empty | Concat (_, _) | Star _ -> true
+  | Epsilon | Empty | Concat (_, _) | Wildcard _ | Star _ -> true
   | _ -> false
 ;;
 
@@ -206,6 +216,7 @@ let rec simplify_re = function
   | Concat (r1, r2) -> Concat (simplify_re r1, simplify_re r2)
   | Star r1 -> Star (simplify_re r1)
   | Empty -> Empty
+  | Wildcard a -> Wildcard a
 ;;
 
 (* |simplify| -- simplifies input regex. Repeats until no more changes *)
@@ -222,7 +233,7 @@ let simplify re =
 (* |is_nullable| -- returns true if RE contains ε *)
 let rec is_nullable = function
   | Epsilon | Star _ -> true
-  | Literal _ | Empty -> false
+  | Literal _ | Empty | Wildcard _ -> false
   | Union (r1, r2) -> is_nullable r1 || is_nullable r2
   | Concat (r1, r2) -> is_nullable r1 && is_nullable r2
 ;;
@@ -230,8 +241,9 @@ let rec is_nullable = function
 (* |derivative| -- returns the Brzozowski derivative w.r.t w *)
 let rec derivative re w =
   match re with
+  | Wildcard alphabet when Tree.String_set.mem w alphabet -> Epsilon
   | Literal a when w = a -> Epsilon
-  | Literal _ | Epsilon | Empty -> Empty
+  | Literal _ | Epsilon | Empty | Wildcard _ -> Empty
   | Star r -> Concat (derivative r w, Star r)
   | Union (r1, r2) -> Union (derivative r1 w, derivative r2 w)
   | Concat (r1, r2) when is_nullable r1 ->
