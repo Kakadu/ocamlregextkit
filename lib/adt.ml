@@ -117,21 +117,21 @@ let is_accepting m s =
 
 let get_reachable_states : 'a. 'a automata -> 'a list =
   fun m ->
-  let rec find_reachable_states : _ list -> _ list =
-    fun marked ->
-    let newmarked =
-      List.fold_left
-        (fun acc s ->
-          SS.fold_left
-            (fun acc2 a -> Utils.list_union acc2 (get_next_states m s a))
-            acc
-            (SS.add "ε" m.alphabet))
-        marked
-        marked
-    in
-    if marked <> newmarked then find_reachable_states newmarked else newmarked
+  let rec find_reachable_states : _ list -> _ list -> _ list =
+    fun to_visit visited ->
+      match to_visit with
+      | [] -> visited
+      | st :: to_visit ->
+        let visited = st :: visited in
+        let to_visit =
+          SS.fold_left (fun acc a ->
+            List.fold_left (fun acc st -> if List.mem st visited then acc else st :: acc)
+            acc (get_next_states m st a))
+          to_visit (SS.add "ε" m.alphabet)
+        in
+        find_reachable_states to_visit visited
   in
-  find_reachable_states [ m.start ]
+  find_reachable_states [ m.start ] []
 ;;
 
 let find_reachable_state : ('a -> bool) -> 'a automata -> 'a =
