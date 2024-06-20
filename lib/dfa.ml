@@ -108,8 +108,10 @@ let prune m =
 
 (* |is_empty| -- returns true iff dfa has no reachable accepting states *)
 let is_empty m =
-  let marked = reachable_states m in
-  not (List.exists (is_accepting m) marked)
+  try
+    let _ = Adt.find_reachable_state (is_accepting m) m in
+    false
+  with Not_found -> true
 ;;
 
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)

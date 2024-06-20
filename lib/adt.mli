@@ -111,6 +111,8 @@ val is_accepting : 't automata -> 't -> bool
     @return the set of states reachable for an automaton [m] *)
 val get_reachable_states : 't automata -> 't list
 
+val find_reachable_state : ('t -> bool) -> 't automata -> 't
+
 (** [filter_states_inplace m f]
     mutates automaton [m] inplace filtering states by function [f] *)
 val filter_states_inplace : 't automata -> ('t -> bool) -> unit

@@ -134,6 +134,29 @@ let get_reachable_states : 'a. 'a automata -> 'a list =
   find_reachable_states [ m.start ]
 ;;
 
+let find_reachable_state : ('a -> bool) -> 'a automata -> 'a =
+  fun f m ->
+  let rec find_reachable_state : 'a list -> 'a list -> 'a =
+    fun to_visit visited ->
+    match to_visit with
+    | [] -> raise Not_found
+    | st :: _ when f st -> st
+    | st :: to_visit ->
+    let visited = st :: visited in
+    let to_visit =
+      SS.fold_left
+        (fun acc a ->
+          List.fold_left
+          (fun acc st -> if List.mem st visited then acc else st :: acc)
+          acc (get_next_states m st a))
+        to_visit
+        (SS.add "ε" m.alphabet)
+    in
+    find_reachable_state to_visit visited
+  in
+  find_reachable_state [ m.start ] []
+;;
+
 let filter_states_inplace m f =
   set_states m (List.filter f m.states);
   Hashtbl.filter_map_inplace (fun s ts -> if f s then Some ts else None) m.transitions;
