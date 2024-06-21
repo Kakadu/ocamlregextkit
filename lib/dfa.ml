@@ -170,7 +170,8 @@ let product_construction op m1 m2 =
               with
               | [], _ | _, [] -> acc'
               | lRes :: _, rRes :: _ ->
-                (ProductState (l, r), a, ProductState (lRes, rRes)) :: acc')
+                (ProductState (l, r), Adt.singleton_mark a, ProductState (lRes, rRes))
+                :: acc')
             acc
             alphabet
         | _ -> acc)
@@ -234,7 +235,7 @@ let disjoin_dfas m1 m2 =
         List.find_opt
           (fun s ->
             (not (is_accepting m1 s))
-            && Adt.for_all_alphabet (fun a -> succ m1 s a = s) m1)
+            && Adt.for_all_alphabet (fun a -> succ m1 s (Adt.singleton_mark a) = s) m1)
           (get_states m1)
       with
       | Some t ->
@@ -254,7 +255,7 @@ let disjoin_dfas m1 m2 =
         List.find_opt
           (fun s ->
             (not (is_accepting m2 s))
-            && Adt.for_all_alphabet (fun a -> succ m2 s a = s) m2)
+            && Adt.for_all_alphabet (fun a -> succ m2 s (Adt.singleton_mark a) = s) m2)
           (get_states m2)
       with
       | Some t ->
