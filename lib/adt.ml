@@ -19,6 +19,8 @@ end
 type alphabet = SS.t
 type halfmark = int
 
+let eps_halfmark = min_int
+
 (** ASCII code for character on the edge. *)
 type mark =
   { mfrom : halfmark
@@ -303,8 +305,10 @@ let mark_of_string_exn s =
   make_mark ~from:half half
 ;;
 
+let halfmark_of_char = Char.code
+
 let mark_of_char chr =
-  let c = Char.code chr in
+  let c = halfmark_of_char chr in
   make_mark ~from:c c
 ;;
 

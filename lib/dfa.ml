@@ -226,8 +226,8 @@ let disjoin_dfas m1 m2 =
     Adt.SS.filter (fun a -> not (Adt.SS.mem a (get_alphabet m2))) merged_alphabet
   in
   (* find a sink states, and add missing transitions *)
-  let missingtran1 = ref []
-  and hassink1 = ref false in
+  let missingtran1 = ref [] in
+  let hassink1 = ref false in
   if Adt.SS.cardinal merged_alphabet > Adt.SS.cardinal (get_alphabet m1)
   then (
     let sink =
@@ -245,7 +245,9 @@ let disjoin_dfas m1 m2 =
     in
     missingtran1
     := List.concat
-       @@ Adt.SS.map_list (fun a -> Adt.map_states (fun s -> s, a, sink) m1) missingalph1);
+       @@ Adt.SS.map_list
+            (fun a -> Adt.map_states (fun s -> s, Adt.singleton_mark a, sink) m1)
+            missingalph1);
   let missingtran2 = ref []
   and hassink2 = ref false in
   if Adt.SS.cardinal merged_alphabet > Adt.SS.cardinal (get_alphabet m2)
@@ -267,12 +269,14 @@ let disjoin_dfas m1 m2 =
     := List.concat
        @@ Adt.SS.map_list
             (fun a ->
-              List.map (fun s -> s, a, sink) (Utils.add_unique sink (get_states m2)))
+              List.map
+                (fun s -> s, Adt.singleton_mark a, sink)
+                (Utils.add_unique sink (get_states m2)))
             missingalph2);
-  let newstate1 = if !hassink1 then get_states m1 else State [] :: get_states m1
-  and newtrans1 = get_transitions m1 @ !missingtran1 in
-  let newstate2 = if !hassink2 then get_states m2 else State [] :: get_states m2
-  and newtrans2 = get_transitions m2 @ !missingtran2 in
+  let newstate1 = if !hassink1 then get_states m1 else State [] :: get_states m1 in
+  let newtrans1 = get_transitions m1 @ !missingtran1 in
+  let newstate2 = if !hassink2 then get_states m2 else State [] :: get_states m2 in
+  let newtrans2 = get_transitions m2 @ !missingtran2 in
   ( Adt.create_automata_gen
       newstate1
       merged_alphabet
@@ -288,11 +292,12 @@ let disjoin_dfas m1 m2 =
 ;;
 
 (* |hopcroft_equiv| -- returns true iff DFAs are equivalent, by Hopcroft's algorithm *)
-let hopcroft_equiv m1 m2 =
+(* let hopcroft_equiv m1 m2 =
   let m1', m2' = disjoin_dfas m1 m2 in
   let merged_states =
     ref (List.rev_map (fun s -> [ s ]) (get_states m1' @ get_states m2'))
-  and stack = ref [] in
+  in
+  let stack = ref [] in
   merged_states
   := List.filter_map
        (fun s ->
@@ -308,10 +313,10 @@ let hopcroft_equiv m1 m2 =
     stack := List.tl !stack;
     Adt.iter_alphabet
       (fun a ->
-        let succ1 = succ m1' q1 a
-        and succ2 = succ m2' q2 a in
-        let r1 = List.find (List.mem succ1) !merged_states
-        and r2 = List.find (List.mem succ2) !merged_states in
+        let succ1 = succ m1' q1 a in
+        let succ2 = succ m2' q2 a in
+        let r1 = List.find (List.mem succ1) !merged_states in
+        let r2 = List.find (List.mem succ2) !merged_states in
         if r1 <> r2
         then (
           stack := (succ1, succ2) :: !stack;
@@ -327,160 +332,160 @@ let hopcroft_equiv m1 m2 =
       List.for_all (fun s -> is_accepting m1' s || is_accepting m2' s) ss
       || List.for_all (fun s -> not (is_accepting m1' s || is_accepting m2' s)) ss)
     !merged_states
-;;
+;; *)
 
 (* |symmetric_equiv| -- returns true iff DFAs are equivalent, by Symmetric Difference *)
 let symmetric_equiv m1 m2 = is_empty (product_difference m1 m2)
 
 (* |is_equiv| -- synonym for hopcroft_equiv *)
-let is_equiv = hopcroft_equiv
+(* let is_equiv = hopcroft_equiv *)
 
 (* |myhill_min| -- returns minimised DFA by myhill nerode *)
-let myhill_min m =
-  prune m;
-  let allpairs =
-    let rec find_pairs xss yss =
-      match xss, yss with
-      | [], _ -> []
-      | _, [] -> []
-      | x :: xs, ys ->
-        List.rev_append (List.rev_map (fun y -> x, y) ys) (find_pairs xs (List.tl ys))
-    in
-    find_pairs (get_states m) (get_states m)
-  in
-  let marked =
-    ref
-      (List.filter
-         (fun (p, q) ->
-           let pa = is_accepting m p
-           and qa = is_accepting m q in
-           (pa && not qa) || ((not pa) && qa))
-         allpairs)
-  in
-  let unmarked = ref (List.filter (fun ss -> not (List.mem ss !marked)) allpairs)
-  and stop = ref false in
-  while not !stop do
-    stop := true;
-    let newunmarked = ref [] in
-    List.iter
-      (fun (p, q) ->
-        if Adt.exists_alphabet
-             (fun a ->
-               let succp = succ m p a
-               and succq = succ m q a in
-               List.mem (succp, succq) !marked || List.mem (succq, succp) !marked)
-             m
-        then (
-          marked := (p, q) :: !marked;
-          stop := false)
-        else newunmarked := (p, q) :: !newunmarked)
-      !unmarked;
-    unmarked := !newunmarked
-  done;
-  (* unmarked gives us all pairs of indistinguishable states *)
-  (* merge these states! *)
-  List.iter (fun (p, q) -> if p <> q then Adt.merge_states_inplace m p q) !unmarked
-;;
+(* let myhill_min m =
+   prune m;
+   let allpairs =
+   let rec find_pairs xss yss =
+   match xss, yss with
+   | [], _ -> []
+   | _, [] -> []
+   | x :: xs, ys ->
+   List.rev_append (List.rev_map (fun y -> x, y) ys) (find_pairs xs (List.tl ys))
+   in
+   find_pairs (get_states m) (get_states m)
+   in
+   let marked =
+   ref
+   (List.filter
+   (fun (p, q) ->
+   let pa = is_accepting m p in
+   let qa = is_accepting m q in
+   (pa && not qa) || ((not pa) && qa))
+   allpairs)
+   in
+   let unmarked = ref (List.filter (fun ss -> not (List.mem ss !marked)) allpairs) in
+   let stop = ref false in
+   while not !stop do
+   stop := true;
+   let newunmarked = ref [] in
+   List.iter
+   (fun (p, q) ->
+   if Adt.exists_alphabet
+   (fun a ->
+   let succp = succ m p a
+   and succq = succ m q a in
+   List.mem (succp, succq) !marked || List.mem (succq, succp) !marked)
+   m
+   then (
+   marked := (p, q) :: !marked;
+   stop := false)
+   else newunmarked := (p, q) :: !newunmarked)
+   !unmarked;
+   unmarked := !newunmarked
+   done;
+   (* unmarked gives us all pairs of indistinguishable states *)
+   (* merge these states! *)
+   List.iter (fun (p, q) -> if p <> q then Adt.merge_states_inplace m p q) !unmarked
+   ;; *)
 
 (* |brzozowski_min| -- minimise input DFA by Brzozowski's algorithm *)
-let brzozowski_min m =
-  let reverse_and_determinise d =
-    let get_state s = Option.get (Utils.index s (get_states d)) in
-    let newstart = List.sort compare (Adt.map_accepting get_state d) in
-    let newstates = ref [ State newstart ]
-    and newtrans = ref []
-    and stack = ref [ newstart ]
-    and donestates = ref [ newstart ] in
-    while List.length !stack > 0 do
-      let currentstate = List.hd !stack in
-      stack := List.tl !stack;
-      Adt.iter_alphabet
-        (fun a ->
-          let nextstate = ref [] in
-          List.iter
-            (fun t ->
-              let preds = pred d (List.nth (get_states d) t) a in
-              nextstate := Utils.list_union !nextstate (List.map get_state preds))
-            currentstate;
-          nextstate := List.sort compare !nextstate;
-          if not (List.mem !nextstate !donestates)
-          then (
-            stack := !nextstate :: !stack;
-            donestates := !nextstate :: !donestates;
-            newstates := Utils.add_unique (State !nextstate) !newstates);
-          newtrans := (State currentstate, a, State !nextstate) :: !newtrans)
-        d
-    done;
-    let newaccepting =
-      List.filter_map
-        (function
-          | State s ->
-            if List.mem (get_state (get_start d)) s then Some (State s) else None
-          | _ -> None)
-        !newstates
-    in
-    Adt.create_automata_gen
-      !newstates
-      (get_alphabet d)
-      !newtrans
-      (State newstart)
-      newaccepting
-  in
-  (* reverse DFA *)
-  let drd = reverse_and_determinise m in
-  (* reverse Drd *)
-  reverse_and_determinise drd
-;;
+(* let brzozowski_min m =
+   let reverse_and_determinise d =
+   let get_state s = Option.get (Utils.index s (get_states d)) in
+   let newstart = List.sort compare (Adt.map_accepting get_state d) in
+   let newstates = ref [ State newstart ] in
+   let newtrans = ref [] in
+   let stack = ref [ newstart ] in
+   let donestates = ref [ newstart ] in
+   while List.length !stack > 0 do
+   let currentstate = List.hd !stack in
+   stack := List.tl !stack;
+   Adt.iter_alphabet
+   (fun a ->
+   let nextstate = ref [] in
+   List.iter
+   (fun t ->
+   let preds = pred d (List.nth (get_states d) t) a in
+   nextstate := Utils.list_union !nextstate (List.map get_state preds))
+   currentstate;
+   nextstate := List.sort compare !nextstate;
+   if not (List.mem !nextstate !donestates)
+   then (
+   stack := !nextstate :: !stack;
+   donestates := !nextstate :: !donestates;
+   newstates := Utils.add_unique (State !nextstate) !newstates);
+   newtrans := (State currentstate, a, State !nextstate) :: !newtrans)
+   d
+   done;
+   let newaccepting =
+   List.filter_map
+   (function
+   | State s ->
+   if List.mem (get_state (get_start d)) s then Some (State s) else None
+   | _ -> None)
+   !newstates
+   in
+   Adt.create_automata_gen
+   !newstates
+   (get_alphabet d)
+   !newtrans
+   (State newstart)
+   newaccepting
+   in
+   (* reverse DFA *)
+   let drd = reverse_and_determinise m in
+   (* reverse Drd *)
+   reverse_and_determinise drd
+   ;; *)
 
 (* |hopcroft_min| -- minimise input DFA by Hopcroft's algorithm *)
-let hopcroft_min m =
-  prune m;
-  let p = ref [] in
-  (* let __s = Adt.filter_states (fun s -> print_string (stringify_state s)) m in *)
-  let qnotf = Adt.filter_states (fun s -> not (is_accepting m s)) m in
-  if List.length qnotf > 0 then p := [ qnotf ];
-  if List.length (get_accepting m) > 0 then p := get_accepting m :: !p;
-  let w = ref !p in
-  while List.length !w > 0 do
-    let s = List.hd !w in
-    w := List.tl !w;
-    Adt.iter_alphabet
-      (fun a ->
-        let l_a = List.fold_left (fun acc t -> Utils.list_union acc (pred m t a)) [] s in
-        let newp = ref [] in
-        List.iter
-          (fun r ->
-            let r_1 = List.filter (fun s -> List.mem s l_a) r
-            and r_2 = List.filter (fun s -> not (List.mem s l_a)) r in
-            if List.length r_1 > 0 && List.length r_2 > 0
-            then (
-              newp := r_1 :: r_2 :: !newp;
-              if List.mem r !w
-              then w := r_1 :: r_2 :: List.filter (( <> ) r) !w
-              else if List.length r_1 <= List.length r_2
-              then w := r_1 :: !w
-              else w := r_2 :: !w)
-            else newp := r :: !newp)
-          !p;
-        p := !newp)
-      m
-  done;
-  List.iter
-    (fun ss ->
-      if List.length ss > 1
-      then (
-        let rec merge_list p = function
-          | q :: xs ->
-            Adt.merge_states_inplace m p q;
-            merge_list p xs
-          | [] -> ()
-        in
-        merge_list (List.hd ss) (List.tl ss)))
-    !p
-;;
+(* let hopcroft_min m =
+   prune m;
+   let p = ref [] in
+   (* let __s = Adt.filter_states (fun s -> print_string (stringify_state s)) m in *)
+   let qnotf = Adt.filter_states (fun s -> not (is_accepting m s)) m in
+   if List.length qnotf > 0 then p := [ qnotf ];
+   if List.length (get_accepting m) > 0 then p := get_accepting m :: !p;
+   let w = ref !p in
+   while List.length !w > 0 do
+   let s = List.hd !w in
+   w := List.tl !w;
+   Adt.iter_alphabet
+   (fun a ->
+   let l_a = List.fold_left (fun acc t -> Utils.list_union acc (pred m t a)) [] s in
+   let newp = ref [] in
+   List.iter
+   (fun r ->
+   let r_1 = List.filter (fun s -> List.mem s l_a) r
+   and r_2 = List.filter (fun s -> not (List.mem s l_a)) r in
+   if List.length r_1 > 0 && List.length r_2 > 0
+   then (
+   newp := r_1 :: r_2 :: !newp;
+   if List.mem r !w
+   then w := r_1 :: r_2 :: List.filter (( <> ) r) !w
+   else if List.length r_1 <= List.length r_2
+   then w := r_1 :: !w
+   else w := r_2 :: !w)
+   else newp := r :: !newp)
+   !p;
+   p := !newp)
+   m
+   done;
+   List.iter
+   (fun ss ->
+   if List.length ss > 1
+   then (
+   let rec merge_list p = function
+   | q :: xs ->
+   Adt.merge_states_inplace m p q;
+   merge_list p xs
+   | [] -> ()
+   in
+   merge_list (List.hd ss) (List.tl ss)))
+   !p
+   ;; *)
 
 (* |minimise| -- synonym for hopcroft_min *)
-let minimise = hopcroft_min
+(* let minimise = hopcroft_min *)
 
 (* |nfa_to_dfa| -- converts nfa to dfa by the subset construction *)
 (* let nfa_to_dfa (n : Nfa.nfa) =
@@ -524,10 +529,10 @@ let minimise = hopcroft_min
 let marks_of_re : Tree.re -> Adt.alphabet =
   fun re ->
   let rec helper acc = function
-    | Tree.Literal "ε" -> Adt.SS.add Adt.eps acc
+    | Tree.Literal "ε" -> Adt.SS.add Adt.eps_halfmark acc
     | Literal s ->
       if String.length s = 1
-      then Adt.SS.add Adt.(mark_of_char s.[0]) acc
+      then Adt.SS.add (Adt.halfmark_of_char s.[0]) acc
       else assert false
     | Epsilon | Empty -> acc
     | Union (r1, r2) | Concat (r1, r2) ->
@@ -543,14 +548,14 @@ let re_to_dfa (r : Tree.re) =
   let alphabet = marks_of_re r' in
   let w = ref [ r', State [ 0 ] ] in
   let states = ref [ r', State [ 0 ] ] in
-  let trans = ref [] in
+  let trans : (_ * Adt.mark * _) list ref = ref [] in
   let count = ref 0 in
   while List.length !w > 0 do
     let re, s = List.hd !w in
     w := List.tl !w;
     Adt.SS.iter
       (fun c ->
-        let deriv = Re.simplify (Re.derivative re (Adt.string_of_mark c)) in
+        let deriv = Re.simplify (Re.derivative re (Adt.string_of_halfmark c)) in
         let t =
           match List.assoc_opt deriv !states with
           | Some tt -> tt
@@ -560,7 +565,7 @@ let re_to_dfa (r : Tree.re) =
             states := (deriv, State [ !count ]) :: !states;
             State [ !count ]
         in
-        trans := (s, c, t) :: !trans)
+        trans := (s, Adt.singleton_mark c, t) :: !trans)
       alphabet
   done;
   let _, newstates = List.split !states in
