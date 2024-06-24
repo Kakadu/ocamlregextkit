@@ -99,7 +99,12 @@ let map_accepting f m =
   Hashtbl.fold (fun s v acc -> if v then f s :: acc else acc) m.accepting []
 ;;
 
-let get_next_states m s a = Hashtbl.find_all (Hashtbl.find m.transitions s) a
+let get_next_states m s a =
+  match Hashtbl.find_all (Hashtbl.find m.transitions s) a with
+  | l -> l
+  | exception Not_found -> []
+
+let get_next_state m s a = Hashtbl.find (Hashtbl.find m.transitions s) a
 
 let get_prev_states m t a =
   Hashtbl.fold

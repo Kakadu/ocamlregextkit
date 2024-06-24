@@ -95,9 +95,13 @@ val iter_accepting : ('t -> unit) -> 't automata -> unit
     @return the list [[f s1; ...; f sn]]*)
 val map_accepting : ('t -> 'a) -> 't automata -> 'a list
 
-(** [get_next_states m s a]
+(** [get_next_state m s a]
     @return the successor states of [m] after reading letter [a] from state [s] *)
 val get_next_states : 't automata -> 't -> string -> 't list
+
+(** [get_next_state m s a]
+    @return the first successor state of [m] after reading letter [a] from state [s] *)
+val get_next_state : 't automata -> 't -> string -> 't
 
 (** [get_prev_states m s a]
     @return the list of predecessor states of [m] before reading letter [a] from state [s] *)
