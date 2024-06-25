@@ -531,37 +531,45 @@ let nfa_to_dfa (n : Nfa.nfa) =
 ;;
 
 (* |re_to_dfa| -- Converts re to (almost) minimal dfa by Brzozowski derivatives *)
-let re_to_dfa (r : Tree.re) =
-  let r' = Re.simplify r in
-  let alphabet = Re.get_alphabet r' in
-  let w = ref [ r', State [ 0 ] ] in
-  let states = ref [ r', State [ 0 ] ] in
-  let trans = ref [] in
-  let count = ref 0 in
-  while List.length !w > 0 do
-    let re, s = List.hd !w in
-    w := List.tl !w;
-    List.iter
-      (fun c ->
-        let deriv = Re.simplify (Re.derivative re c) in
-        let t =
-          match List.assoc_opt deriv !states with
-          | Some tt -> tt
-          | None ->
-            incr count;
-            w := (deriv, State [ !count ]) :: !w;
-            states := (deriv, State [ !count ]) :: !states;
-            State [ !count ]
-        in
-        trans := (s, c, t) :: !trans)
-      alphabet
-  done;
-  let _, newstates = List.split !states in
-  let accepting =
-    List.filter_map (fun (re, s) -> if Re.is_nullable re then Some s else None) !states
-  in
-  Adt.create_automata newstates alphabet !trans (State [ 0 ]) accepting
-;;
+let re_to_dfa : Tree.re -> dfa =
+  let is_not_empty = function _ :: _ -> true | _ -> false in
+  fun r ->
+    let r' = Re.simplify r in
+    let alphabet = Re.get_alphabet r' in
+    let init_state = State [ 0 ] in
+    let w = ref [ (r', init_state) ] in
+    let states = Hashtbl.create 42 in
+    Hashtbl.add states r' init_state;
+    let trans = ref [] in
+    let count = ref 0 in
+    while is_not_empty !w do
+      let re, s = List.hd !w in
+      w := List.tl !w;
+      List.iter
+        (fun c ->
+          let deriv = Re.simplify (Re.derivative re c) in
+          let t =
+            match Hashtbl.find states deriv with
+            | tt -> tt
+            | exception Not_found ->
+                incr count;
+                let new_state = State [ !count ] in
+                w := (deriv, new_state) :: !w;
+                Hashtbl.add states deriv new_state;
+                new_state
+          in
+          trans := (s, c, t) :: !trans)
+        alphabet
+    done;
+    let bindings = Hashtbl.fold (fun k v acc -> (k, v) :: acc) states [] in
+    let _, newstates = List.split bindings in
+    let accepting =
+      List.filter_map
+        (fun (re, s) -> if Re.is_nullable re then Some s else None)
+        bindings
+    in
+    Adt.create_automata newstates alphabet !trans init_state accepting
+  ;;
 
 (* |copy| -- Creates a deep copy of DFA *)
 let copy = Adt.copy
