@@ -107,12 +107,17 @@ let prune m =
 ;;
 
 (* |is_empty| -- returns true iff dfa has no reachable accepting states *)
-let is_empty m =
-  try
-    let _ = Adt.find_reachable_state (is_accepting m) m in
-    false
-  with Not_found -> true
-;;
+  let is_empty =
+    let module S = Set.Make (struct
+      type t = state
+
+      let compare = Stdlib.compare
+    end) in
+    fun m ->
+      try
+        let _ = Adt.find_reachable_state (module S) (is_accepting m) m in
+        false
+      with Not_found -> true
 
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)
 let is_accepted m s =

@@ -139,27 +139,27 @@ let get_reachable_states : 'a. 'a automata -> 'a list =
   find_reachable_states [ m.start ] []
 ;;
 
-let find_reachable_state : ('a -> bool) -> 'a automata -> 'a =
-  fun f m ->
-  let rec find_reachable_state : 'a list -> 'a list -> 'a =
+let find_reachable_state (type t): (module Set.S with type elt = t) -> (t -> bool) -> t automata -> t =
+  fun (module S) f m ->
+  let rec find_reachable_state : t list -> S.t -> t =
     fun to_visit visited ->
     match to_visit with
     | [] -> raise Not_found
     | st :: _ when f st -> st
     | st :: to_visit ->
-    let visited = st :: visited in
+    let visited = S.add st visited in
     let to_visit =
       SS.fold_left
         (fun acc a ->
           List.fold_left
-          (fun acc st -> if List.mem st visited then acc else st :: acc)
+          (fun acc st -> if S.mem st visited then acc else st :: acc)
           acc (get_next_states m st a))
         to_visit
         (SS.add "ε" m.alphabet)
     in
     find_reachable_state to_visit visited
   in
-  find_reachable_state [ m.start ] []
+  find_reachable_state [ m.start ] S.empty
 ;;
 
 let filter_states_inplace m f =
