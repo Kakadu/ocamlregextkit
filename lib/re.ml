@@ -136,7 +136,8 @@ let rec repeated w re =
 ;;
 
 (* |simplify_re| -- recursively simplifies the regex *)
-let rec simplify_re = function
+let rec simplify_re re =
+  match re with
   (* Reduce by Kozen Axioms *)
   | Union (Union (r1, r2), r3) ->
     simplify_re (Union (r1, Union (r2, r3))) (* (a + b) + c = a + (b + c) *)
@@ -210,20 +211,25 @@ let rec simplify_re = function
             (List.tl alph)
             (Literal (List.hd alph))))
   (* otherwise, simplify children *)
-  | Literal a -> Literal a
-  | Epsilon -> Epsilon
-  | Union (r1, r2) -> Union (simplify_re r1, simplify_re r2)
-  | Concat (r1, r2) -> Concat (simplify_re r1, simplify_re r2)
-  | Star r1 -> Star (simplify_re r1)
-  | Empty -> Empty
-  | Wildcard a -> Wildcard a
+  | Literal _ | Epsilon | Empty | Wildcard _ -> re
+  | Union (r1, r2) ->
+      let new_r1 = simplify_re r1 in
+      let new_r2 = simplify_re r2 in
+      if r1 == new_r1 && r2 == new_r2 then re else Union (new_r1, new_r2)
+  | Concat (r1, r2) ->
+      let new_r1 = simplify_re r1 in
+      let new_r2 = simplify_re r2 in
+      if r1 == new_r1 && r2 == new_r2 then re else Concat (new_r1, new_r2)
+  | Star r ->
+      let new_r = simplify_re r in
+      if r == new_r then re else Star new_r
 ;;
 
 (* |simplify| -- simplifies input regex. Repeats until no more changes *)
 let simplify re =
   let r = ref re
   and newr = ref (simplify_re re) in
-  while !r <> !newr do
+  while !r != !newr do
     r := !newr;
     newr := simplify_re !r
   done;
