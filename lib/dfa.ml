@@ -10,6 +10,12 @@ type product_op =
   | Intersection
   | SymmetricDifference
 
+module State_set = Set.Make (struct
+  type t = state
+
+  let compare = Stdlib.compare
+end)
+
 let get_states = Adt.get_states
 let get_alphabet = Adt.get_alphabet
 let get_transitions = Adt.get_transitions
@@ -107,17 +113,12 @@ let prune m =
 ;;
 
 (* |is_empty| -- returns true iff dfa has no reachable accepting states *)
-  let is_empty =
-    let module S = Set.Make (struct
-      type t = state
-
-      let compare = Stdlib.compare
-    end) in
-    fun m ->
-      try
-        let _ = Adt.find_reachable_state (module S) (is_accepting m) m in
-        false
-      with Not_found -> true
+let is_empty m =
+  try
+    let _ = Adt.find_reachable_state (module State_set) (is_accepting m) m in
+    false
+  with Not_found -> true
+;;
 
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)
 let is_accepted m s =
@@ -133,82 +134,76 @@ let is_accepted m s =
 ;;
 
 (* |get_accepted| -- returns the shortest word accepted by dfa m *)
-let get_accepted m =
-  let queue = ref [ get_start m, "" ]
-  and seen = ref []
-  and shortest = ref None in
-  while Option.is_none !shortest && List.length !queue > 0 do
-    let currentState, currentWord = List.hd !queue in
-    if is_accepting m currentState
-    then shortest := Some currentWord
-    else (
-      seen := currentState :: !seen;
-      let newt =
-        Adt.SS.filter_map_list
-          (fun a ->
-            let t = succ m currentState a in
-            if not (List.mem t !seen) then Some (t, currentWord ^ a) else None)
-          (get_alphabet m)
-      in
-      queue := List.tl !queue @ newt)
-  done;
-  !shortest
+let get_accepted =
+  let is_not_empty = function _ :: _ -> true | _ -> false in
+  fun m ->
+    let queue = ref [ (get_start m, "") ]
+    and seen = ref State_set.empty
+    and shortest = ref None in
+    while Option.is_none !shortest && is_not_empty !queue do
+      let currentState, currentWord = List.hd !queue in
+      if is_accepting m currentState then shortest := Some currentWord
+      else (
+        seen := State_set.add currentState !seen;
+        let newt =
+          List.filter_map
+            (fun (mark, next_s) ->
+              if State_set.mem next_s !seen then None
+              else Some (next_s, currentWord ^ mark))
+            (Adt.get_transitions_of_state m currentState)
+        in
+        queue := newt @ List.tl !queue)
+    done;
+    !shortest
 ;;
 
+let product_construction op m1 m2 =
+  let alphabet = Adt.SS.union (get_alphabet m1) (get_alphabet m2) in
+  let rec helper visited_states trans = function
+    | [] -> (visited_states, trans)
+    | (st1, st2) :: next_states ->
+        let visited_states, trans, next_states =
+          Adt.SS.fold
+            (fun lit ((visited_states, trans, next_states) as acc) ->
+              match
+                (Adt.get_next_state m1 st1 lit, Adt.get_next_state m2 st2 lit)
+              with
+              | next_st1, next_st2 ->
+                  let state = ProductState (st1, st2) in
+                  let next_state = ProductState (next_st1, next_st2) in
+                  let trans = (state, lit, next_state) :: trans in
+                  if State_set.mem next_state visited_states then
+                    (visited_states, trans, next_states)
+                  else
+                    ( State_set.add next_state visited_states,
+                      trans,
+                      (next_st1, next_st2) :: next_states )
+              | exception Not_found -> acc)
+            alphabet
+            (visited_states, trans, next_states)
+        in
+        helper visited_states trans next_states
+  in
+  let init1 = get_start m1 in
+  let init2 = get_start m2 in
+  let init = ProductState (init1, init2) in
+  let states, trans = helper (State_set.singleton init) [] [ (init1, init2) ] in
+  let states = State_set.elements states in
 
-let product_construction =
-  let module State_set = Set.Make (struct
-    type t = state
+  let predicate =
+    let mk f = function ProductState (l, r) -> f l r | _ -> false in
+    match op with
+    | Union -> mk (fun l r -> is_accepting m1 l || is_accepting m2 r)
+    | Intersection -> mk (fun l r -> is_accepting m1 l && is_accepting m2 r)
+    | SymmetricDifference ->
+        mk (fun l r ->
+            (is_accepting m1 l && not (is_accepting m2 r))
+            || ((not (is_accepting m1 l)) && is_accepting m2 r))
+  in
 
-    let compare = Stdlib.compare
-  end) in
-  fun op m1 m2 ->
-    let alphabet = Adt.SS.union (get_alphabet m1) (get_alphabet m2) in
-    let rec helper visited_states trans = function
-      | [] -> (visited_states, trans)
-      | (st1, st2) :: next_states ->
-          let visited_states, trans, next_states =
-            Adt.SS.fold
-              (fun lit ((visited_states, trans, next_states) as acc) ->
-                match
-                  (Adt.get_next_state m1 st1 lit, Adt.get_next_state m2 st2 lit)
-                with
-                | next_st1, next_st2 ->
-                    let state = ProductState (st1, st2) in
-                    let next_state = ProductState (next_st1, next_st2) in
-                    let trans = (state, lit, next_state) :: trans in
-                    if State_set.mem next_state visited_states then
-                      (visited_states, trans, next_states)
-                    else
-                      ( State_set.add next_state visited_states,
-                        trans,
-                        (next_st1, next_st2) :: next_states )
-                | exception Not_found -> acc)
-              alphabet
-              (visited_states, trans, next_states)
-          in
-          helper visited_states trans next_states
-    in
-    let init1 = get_start m1 in
-    let init2 = get_start m2 in
-    let init = ProductState (init1, init2) in
-    let states, trans = helper (State_set.singleton init) [] [ init1, init2 ] in
-    let states = State_set.elements states in
+  let accepting = List.filter predicate states in
 
-    let predicate =
-      let mk f = function ProductState (l, r) -> f l r | _ -> false in
-      match op with
-      | Union -> mk (fun l r -> is_accepting m1 l || is_accepting m2 r)
-      | Intersection -> mk (fun l r -> is_accepting m1 l && is_accepting m2 r)
-      | SymmetricDifference ->
-          mk (fun l r ->
-              (is_accepting m1 l && not (is_accepting m2 r))
-              || ((not (is_accepting m1 l)) && is_accepting m2 r))
-    in
-
-    let accepting = List.filter predicate states in
-
-    Adt.create_automata states (Adt.SS.elements alphabet) trans init accepting
+  Adt.create_automata states (Adt.SS.elements alphabet) trans init accepting
 ;;
 
 (* |product_intersection| -- returns the intersection of two input dfas, using the product construction *)

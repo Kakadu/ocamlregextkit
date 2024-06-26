@@ -103,6 +103,10 @@ val get_next_states : 't automata -> 't -> string -> 't list
     @return the first successor state of [m] after reading letter [a] from state [s] *)
 val get_next_state : 't automata -> 't -> string -> 't
 
+(** [get_transitions_of_state m s]
+    @return all images of [m] transitions for state [s] *)
+val get_transitions_of_state : 't automata -> 't -> (string * 't) list
+
 (** [get_prev_states m s a]
     @return the list of predecessor states of [m] before reading letter [a] from state [s] *)
 val get_prev_states : 't automata -> 't -> string -> 't list
