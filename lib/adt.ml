@@ -106,12 +106,7 @@ let get_next_states m s a =
 
 let get_next_state m s a = Hashtbl.find (Hashtbl.find m.transitions s) a
 
-let get_transitions_of_state m s =
-  Hashtbl.fold
-    (fun mark next_s acc -> (mark, next_s) :: acc)
-    (Hashtbl.find m.transitions s)
-    []
-;;
+let get_transitions_of_state m = Hashtbl.find m.transitions
 
 let get_prev_states m t a =
   Hashtbl.fold

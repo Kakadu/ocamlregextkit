@@ -146,11 +146,12 @@ let get_accepted =
       else (
         seen := State_set.add currentState !seen;
         let newt =
-          List.filter_map
-            (fun (mark, next_s) ->
-              if State_set.mem next_s !seen then None
-              else Some (next_s, currentWord ^ mark))
+          Hashtbl.fold
+            (fun mark next_s acc ->
+              if State_set.mem next_s !seen then acc
+              else (next_s, currentWord ^ mark) :: acc)
             (Adt.get_transitions_of_state m currentState)
+            []
         in
         queue := newt @ List.tl !queue)
     done;
@@ -162,14 +163,14 @@ let product_construction op m1 m2 =
   let rec helper visited_states trans = function
     | [] -> (visited_states, trans)
     | (st1, st2) :: next_states ->
+        let next_of_st1 = Adt.get_transitions_of_state m1 st1 in
+        let next_of_st2 = Adt.get_transitions_of_state m2 st2 in
+        let state = ProductState (st1, st2) in
         let visited_states, trans, next_states =
-          Adt.SS.fold
-            (fun lit ((visited_states, trans, next_states) as acc) ->
-              match
-                (Adt.get_next_state m1 st1 lit, Adt.get_next_state m2 st2 lit)
-              with
-              | next_st1, next_st2 ->
-                  let state = ProductState (st1, st2) in
+          Hashtbl.fold
+            (fun lit next_st1 ((visited_states, trans, next_states) as acc) ->
+              match Hashtbl.find next_of_st2 lit with
+              | next_st2 ->
                   let next_state = ProductState (next_st1, next_st2) in
                   let trans = (state, lit, next_state) :: trans in
                   if State_set.mem next_state visited_states then
@@ -179,7 +180,7 @@ let product_construction op m1 m2 =
                       trans,
                       (next_st1, next_st2) :: next_states )
               | exception Not_found -> acc)
-            alphabet
+            next_of_st1
             (visited_states, trans, next_states)
         in
         helper visited_states trans next_states
@@ -189,20 +190,14 @@ let product_construction op m1 m2 =
   let init = ProductState (init1, init2) in
   let states, trans = helper (State_set.singleton init) [] [ (init1, init2) ] in
   let states = State_set.elements states in
-
   let predicate =
     let mk f = function ProductState (l, r) -> f l r | _ -> false in
     match op with
     | Union -> mk (fun l r -> is_accepting m1 l || is_accepting m2 r)
     | Intersection -> mk (fun l r -> is_accepting m1 l && is_accepting m2 r)
-    | SymmetricDifference ->
-        mk (fun l r ->
-            (is_accepting m1 l && not (is_accepting m2 r))
-            || ((not (is_accepting m1 l)) && is_accepting m2 r))
+    | SymmetricDifference -> mk (fun l r -> is_accepting m1 l <> is_accepting m2 r)
   in
-
   let accepting = List.filter predicate states in
-
   Adt.create_automata states (Adt.SS.elements alphabet) trans init accepting
 ;;
 

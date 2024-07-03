@@ -105,7 +105,7 @@ val get_next_state : 't automata -> 't -> string -> 't
 
 (** [get_transitions_of_state m s]
     @return all images of [m] transitions for state [s] *)
-val get_transitions_of_state : 't automata -> 't -> (string * 't) list
+val get_transitions_of_state : 't automata -> 't -> (string, 't) Hashtbl.t
 
 (** [get_prev_states m s a]
     @return the list of predecessor states of [m] before reading letter [a] from state [s] *)
