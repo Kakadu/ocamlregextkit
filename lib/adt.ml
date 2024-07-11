@@ -141,25 +141,25 @@ let get_reachable_states : 'a. 'a automata -> 'a list =
   find_reachable_states [ m.start ] []
 ;;
 
-let find_reachable_state (type t): (module Set.S with type elt = t) -> (t -> bool) -> t automata -> t =
-  fun (module S) f m ->
+let find_reachable_state (type t) :
+    (module Set.S with type elt = t) -> (t -> bool) -> t automata -> t =
+ fun (module S) f m ->
   let rec find_reachable_state : t list -> S.t -> t =
-    fun to_visit visited ->
+   fun to_visit visited ->
     match to_visit with
     | [] -> raise Not_found
     | st :: _ when f st -> st
+    | st :: to_visit when S.mem st visited ->
+        find_reachable_state to_visit visited
     | st :: to_visit ->
-    let visited = S.add st visited in
-    let to_visit =
-      SS.fold_left
-        (fun acc a ->
-          List.fold_left
-          (fun acc st -> if S.mem st visited then acc else st :: acc)
-          acc (get_next_states m st a))
-        to_visit
-        (SS.add "ε" m.alphabet)
-    in
-    find_reachable_state to_visit visited
+        let visited = S.add st visited in
+        let to_visit =
+          Hashtbl.fold
+            (fun _ st acc -> if S.mem st visited then acc else st :: acc)
+            (get_transitions_of_state m st)
+            to_visit
+        in
+        find_reachable_state to_visit visited
   in
   find_reachable_state [ m.start ] S.empty
 ;;
