@@ -164,6 +164,29 @@ let find_reachable_state (type t) :
   find_reachable_state [ m.start ] S.empty
 ;;
 
+let find_recognizable_string (type t): (module Set.S with type elt = t) -> (t -> bool) -> t automata -> string =
+  fun (module S) f m ->
+  let rec find_reachable_state : (string*t) list -> S.t -> string =
+    fun to_visit visited ->
+    match to_visit with
+    | [] -> raise Not_found
+    | (str,st) :: _ when f st -> str
+    | (str,st) :: to_visit ->
+        let visited = S.add st visited in
+        let to_visit =
+          SS.fold_left
+            (fun acc a ->
+              List.fold_left
+                (fun acc st -> if S.mem st visited then acc else (str^a,st) :: acc)
+                acc (get_next_states m st a))
+            to_visit
+            (SS.add "ε" m.alphabet)
+        in
+        find_reachable_state to_visit visited
+  in
+  find_reachable_state [ "",m.start ] S.empty
+;;
+
 let filter_states_inplace m f =
   set_states m (List.filter f m.states);
   Hashtbl.filter_map_inplace (fun s ts -> if f s then Some ts else None) m.transitions;

@@ -119,7 +119,12 @@ val is_accepting : 't automata -> 't -> bool
     @return the set of states reachable for an automaton [m] *)
 val get_reachable_states : 't automata -> 't list
 
+(** Raises {!Stdlib.Not_found} for empty automata *)
 val find_reachable_state : (module Set.S with type elt = 't) -> ('t -> bool) -> 't automata -> 't
+
+(** Returns a string that inhabits automata, if it is not empty.
+    Raises {!Stdlib.Not_found} for empty automata *)
+val find_recognizable_string: (module Set.S with type elt = 't) -> ('t -> bool) -> 't automata -> string
 
 (** [filter_states_inplace m f]
     mutates automaton [m] inplace filtering states by function [f] *)

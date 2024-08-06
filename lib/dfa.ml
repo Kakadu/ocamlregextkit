@@ -120,6 +120,9 @@ let is_empty m =
   with Not_found -> true
 ;;
 
+let first_inhabitant_exn m =
+  Adt.find_recognizable_string (module State_set) (is_accepting m) m
+
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)
 let is_accepted m s =
   let rec does_accept state = function
