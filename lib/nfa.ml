@@ -25,7 +25,7 @@ let print n =
   print_string "alphabet: ";
   Adt.iter_alphabet
     (fun a ->
-      print_string a;
+      print_string (Adt.string_of_mark a);
       print_char ' ')
     n;
   print_newline ();
@@ -45,7 +45,7 @@ let print n =
     (fun (s, a, t) ->
       print_string "    ";
       print_int s;
-      print_string ("\t--" ^ a ^ "-->\t");
+      print_string ("\t--" ^ Adt.string_of_mark a ^ "-->\t");
       print_int t;
       print_newline ())
     n
@@ -69,7 +69,7 @@ let export_graphviz n =
            acc
            (string_of_int s)
            (string_of_int t)
-           a)
+           (Adt.string_of_mark a))
        ""
        (get_transitions n))
 ;;
@@ -78,7 +78,7 @@ let export_graphviz n =
 let eps_reachable_set n ss =
   let get_reachable_set states =
     List.fold_right
-      (fun s acc -> Utils.list_union acc (Adt.get_next_states n s "ε"))
+      (fun s acc -> Utils.list_union acc (Adt.get_next_states n s Adt.eps))
       states
       states
   in
@@ -96,7 +96,7 @@ let eps_reachable_set n ss =
 let reachable_states = Adt.get_reachable_states
 
 (* |succ| -- the resulting states of nfa n after reading symbol *)
-let succ n state symbol =
+let succ n state (symbol : Adt.mark) =
   let initial_reachable = eps_reachable_set n [ state ] in
   let succs =
     List.fold_right
@@ -141,19 +141,21 @@ let is_empty n =
 ;;
 
 (* |is_accepted| -- returns true iff string s is accepted by the nfa n. Can take a long time *)
-let is_accepted n s =
+let is_accepted n (s : string) =
   let sts = ref (eps_reachable_set n [ get_start n ]) in
   for i = 0 to String.length s - 1 do
-    let c = String.make 1 s.[i] in
+    (* let c = String.make 1 s.[i] in *)
+    let mark = Adt.mark_of_char s.[i] in
     sts
     := eps_reachable_set
          n
-         (List.fold_left (fun a ss -> Utils.list_union (succ n ss c) a) [] !sts)
+         (List.fold_left (fun a ss -> Utils.list_union (succ n ss mark) a) [] !sts)
   done;
   List.exists (is_accepting n) !sts
 ;;
 
-(* |get_accepted| -- returns the shortest word accepted by dfa m *)
+(*
+   (* |get_accepted| -- returns the shortest word accepted by dfa m *)
 let get_accepted n =
   let queue = ref (List.rev_map (fun s -> s, "") (eps_reachable_set n [ get_start n ]))
   and seen = ref []
@@ -167,8 +169,9 @@ let get_accepted n =
       let newteps =
         List.filter_map
           (fun t -> if not (List.mem t !seen) then Some (t, currentWord) else None)
-          (Adt.get_next_states n currentState "ε")
-      and newt =
+          (Adt.get_next_states n currentState Adt.eps)
+      in
+      let newt =
         List.concat
         @@ Adt.SS.map_list
              (fun a ->
@@ -183,7 +186,7 @@ let get_accepted n =
   done;
   !shortest
 ;;
-
+*)
 let merge_alphabets n1 n2 =
   let alphabet1 = get_alphabet n1
   and alphabet2 = get_alphabet n2 in
@@ -195,7 +198,7 @@ let merge_alphabets n1 n2 =
 let copy = Adt.copy
 
 (* |create| -- Creates NFA, Renames states as their index in qs *)
-let create qs alph tran init fin =
+let create_gen qs (alph : Adt.SS.t) tran init fin =
   (* Check parameters for correctness *)
   if not (List.mem init qs)
   then raise (Invalid_argument "NFA Initial State not in States");
@@ -205,8 +208,8 @@ let create qs alph tran init fin =
       then raise (Invalid_argument "NFA Accepting State not in States"))
     fin;
   List.iter
-    (fun (s, a, t) ->
-      if not ((a = "ε" || List.mem a alph) && List.mem s qs && List.mem t qs)
+    (fun (s, (a : Adt.mark), t) ->
+      if not ((a = Adt.eps || Adt.SS.mem a alph) && List.mem s qs && List.mem t qs)
       then raise (Invalid_argument "NFA Transition not valid"))
     tran;
   let newstates = List.init (List.length qs) Fun.id in
@@ -216,7 +219,19 @@ let create qs alph tran init fin =
       (fun (s, a, t) -> Option.get (Utils.index s qs), a, Option.get (Utils.index t qs))
       tran
   and newfin = List.rev_map (fun s -> Option.get (Utils.index s qs)) fin in
-  Adt.create_automata newstates alph newtran newinit newfin
+  Adt.create_automata_gen newstates alph newtran newinit newfin
+;;
+
+let create qs alph (tran : (_ * string * _) list) init fin =
+  create_gen
+    qs
+    (List.fold_left
+       (fun acc s -> Adt.SS.add (Adt.mark_of_string_exn s) acc)
+       Adt.SS.empty
+       alph)
+    (List.map (fun (a, b, c) -> a, Adt.mark_of_string_exn b, c) tran)
+    init
+    fin
 ;;
 
 let counter = ref 0
@@ -331,7 +346,7 @@ let intersect ?(verbose = false) left right =
         ()
       | new_from, new_to ->
         (* TODO: Why state will be found? *)
-        if lab1 = lab2 && lab1 = "ε"
+        if lab1 = lab2 && lab1 = Adt.eps
         then (
           add_trans (new_from, lab1, new_to);
           add_trans (new_from, lab1, Hashtbl.find new_states (start1, fin2));
@@ -346,9 +361,9 @@ let intersect ?(verbose = false) left right =
                  start2
                  fin1
                  fin2
-                 lab1)
+                 (Adt.string_of_mark lab1))
             (new_from, lab1, new_to)
-        else if lab1 = "ε"
+        else if lab1 = Adt.eps
         then
           add_trans
             ~msg:
@@ -358,9 +373,9 @@ let intersect ?(verbose = false) left right =
                  start2
                  fin1
                  start2
-                 lab1)
+                 (Adt.string_of_mark lab1))
             (new_from, lab1, Hashtbl.find new_states (fin1, start2))
-        else if lab2 = "ε"
+        else if lab2 = Adt.eps
         then
           add_trans
             ~msg:
@@ -370,11 +385,11 @@ let intersect ?(verbose = false) left right =
                  start2
                  start1
                  fin2
-                 lab1)
+                 (Adt.string_of_mark lab1))
             (new_from, lab2, Hashtbl.find new_states (start1, fin2))));
-  Adt.create_automata
+  Adt.create_automata_gen
     (Hashtbl.to_seq_values new_states |> List.of_seq)
-    (unionAlphabet |> Adt.SS.elements)
+    unionAlphabet
     !cartTrans
     (Hashtbl.find new_states (Adt.get_start left, Adt.get_start right))
     !cartAccepting
