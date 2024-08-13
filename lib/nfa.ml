@@ -346,47 +346,49 @@ let intersect ?(verbose = false) left right =
         ()
       | new_from, new_to ->
         (* TODO: Why state will be found? *)
-        if lab1 = lab2 && lab1 = Adt.eps
-        then (
-          add_trans (new_from, lab1, new_to);
-          add_trans (new_from, lab1, Hashtbl.find new_states (start1, fin2));
-          add_trans (new_from, lab1, Hashtbl.find new_states (fin1, start2)))
-        else if lab1 = lab2
-        then
-          add_trans
-            ~msg:
-              (Printf.sprintf
-                 "add (%d,%d) -> (%d,%d) with %S I"
-                 start1
-                 start2
-                 fin1
-                 fin2
-                 (Adt.string_of_mark lab1))
-            (new_from, lab1, new_to)
-        else if lab1 = Adt.eps
-        then
-          add_trans
-            ~msg:
-              (Printf.sprintf
-                 "add (%d,%d) -> (%d,%d) with %S II"
-                 start1
-                 start2
-                 fin1
-                 start2
-                 (Adt.string_of_mark lab1))
-            (new_from, lab1, Hashtbl.find new_states (fin1, start2))
-        else if lab2 = Adt.eps
-        then
-          add_trans
-            ~msg:
-              (Printf.sprintf
-                 "add (%d,%d) -> (%d,%d) with %S III"
-                 start1
-                 start2
-                 start1
-                 fin2
-                 (Adt.string_of_mark lab1))
-            (new_from, lab2, Hashtbl.find new_states (start1, fin2))));
+        (match Adt.intersect_mark lab1 lab2 with
+         | _ ->
+           if lab1 = lab2 && lab1 = Adt.eps
+           then (
+             add_trans (new_from, lab1, new_to);
+             add_trans (new_from, lab1, Hashtbl.find new_states (start1, fin2));
+             add_trans (new_from, lab1, Hashtbl.find new_states (fin1, start2)))
+           else if lab1 = lab2
+           then
+             add_trans
+               ~msg:
+                 (Printf.sprintf
+                    "add (%d,%d) -> (%d,%d) with %S I"
+                    start1
+                    start2
+                    fin1
+                    fin2
+                    (Adt.string_of_mark lab1))
+               (new_from, lab1, new_to)
+           else if lab1 = Adt.eps
+           then
+             add_trans
+               ~msg:
+                 (Printf.sprintf
+                    "add (%d,%d) -> (%d,%d) with %S II"
+                    start1
+                    start2
+                    fin1
+                    start2
+                    (Adt.string_of_mark lab1))
+               (new_from, lab1, Hashtbl.find new_states (fin1, start2))
+           else if lab2 = Adt.eps
+           then
+             add_trans
+               ~msg:
+                 (Printf.sprintf
+                    "add (%d,%d) -> (%d,%d) with %S III"
+                    start1
+                    start2
+                    start1
+                    fin2
+                    (Adt.string_of_mark lab1))
+               (new_from, lab2, Hashtbl.find new_states (start1, fin2)))));
   Adt.create_automata_gen
     (Hashtbl.to_seq_values new_states |> List.of_seq)
     unionAlphabet
