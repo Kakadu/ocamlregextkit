@@ -125,7 +125,7 @@ val minimise : dfa -> unit
 
 (** [nfa_to_dfa m]
     @return the NFA equivalent to DFA [m], by an optimised subset construction *)
-val nfa_to_dfa : Nfa.nfa -> dfa
+(* val nfa_to_dfa : Nfa.nfa -> dfa *)
 
 (** [re_to_dfa re]
     @return a DFA recognising the language of [re], by Brzozowski's construction *)
@@ -140,4 +140,4 @@ val export_graphviz : dfa -> string
 
 (** [nfa_of_dfa dfa]
     @return NFA constructed as a coercion from DFA *)
-val nfa_of_dfa : dfa -> Nfa.nfa
+(* val nfa_of_dfa : dfa -> Nfa.nfa *)
