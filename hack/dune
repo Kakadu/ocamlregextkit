@@ -1,0 +1,19 @@
+(env
+ (dev
+  (flags
+   (:standard -warn-error -33-34-69-32-26 -w -33-34-69))))
+
+(library
+ (name hack)
+ (modules DFA)
+ (wrapped false)
+ ;(public_name regexp_hack)
+ )
+
+(library
+ (name hack_test)
+ (modules test)
+ (libraries hack)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

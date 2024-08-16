@@ -2,6 +2,7 @@ type mark
 type halfmark = int
 
 val eps : mark
+val eps_halfmark : halfmark
 val string_of_mark : mark -> string
 val string_of_halfmark : halfmark -> string
 val mark_of_string_exn : string -> mark
@@ -9,6 +10,7 @@ val mark_of_char : char -> mark
 val singleton_mark : halfmark -> mark
 val inject_transitions : ('a * string * 'b) list -> ('a * mark * 'b) list
 val intersect_mark : mark -> mark -> mark option
+val halfmark_of_char : char -> halfmark
 
 module SS : sig
   include Set.S with type elt = halfmark
