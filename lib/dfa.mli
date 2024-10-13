@@ -72,6 +72,8 @@ val is_empty : dfa -> bool
 
 val first_inhabitant_exn: state Adt.automata -> string
 
+val first_non_empty_inhabitant_exn: state Adt.automata -> string
+
 (** [is_accepted m s]
     @return [true] iff DFA [m] accepts string [s] *)
 val is_accepted : dfa -> string -> bool

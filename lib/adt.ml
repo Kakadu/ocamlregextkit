@@ -164,13 +164,13 @@ let find_reachable_state (type t) :
   find_reachable_state [ m.start ] S.empty
 ;;
 
-let find_recognizable_string (type t): (module Set.S with type elt = t) -> (t -> bool) -> t automata -> string =
+let find_recognizable_string (type t): (module Set.S with type elt = t) -> (t -> string -> bool) -> t automata -> string =
   fun (module S) f m ->
   let rec find_reachable_state : (string*t) list -> S.t -> string =
     fun to_visit visited ->
     match to_visit with
     | [] -> raise Not_found
-    | (str,st) :: _ when f st -> str
+    | (str,st) :: _ when f st str -> str
     | (str,st) :: to_visit ->
         let visited = S.add st visited in
         let to_visit =

@@ -121,7 +121,10 @@ let is_empty m =
 ;;
 
 let first_inhabitant_exn m =
-  Adt.find_recognizable_string (module State_set) (is_accepting m) m
+  Adt.find_recognizable_string (module State_set) (fun st _ -> is_accepting m st) m
+
+let first_non_empty_inhabitant_exn m =
+  Adt.find_recognizable_string (module  State_set) (fun st str -> str <> "" && is_accepting m st) m
 
 (* |is_accepted| -- returns true iff string s is accepted by the dfa m *)
 let is_accepted m s =

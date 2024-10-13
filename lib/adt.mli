@@ -124,7 +124,7 @@ val find_reachable_state : (module Set.S with type elt = 't) -> ('t -> bool) -> 
 
 (** Returns a string that inhabits automata, if it is not empty.
     Raises {!Stdlib.Not_found} for empty automata *)
-val find_recognizable_string: (module Set.S with type elt = 't) -> ('t -> bool) -> 't automata -> string
+val find_recognizable_string: (module Set.S with type elt = 't) -> ('t -> string -> bool) -> 't automata -> string
 
 (** [filter_states_inplace m f]
     mutates automaton [m] inplace filtering states by function [f] *)
